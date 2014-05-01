@@ -1,0 +1,141 @@
+
+
+Organization: haskell.org
+
+Short description: My proposal is to implement the following ticket: https://ghc.haskell.org/trac/summer-of-code/ticket/1617 The purpose is to have highly performant, library quality concurrent datastructures for haskell. These are to be implemented without locking using atomic operations. Specifically I want to implement an Hash Map. Probably: Lock free hash Table by Cliff Click
+
+Additional info: https://ghc.haskell.org/trac/summer-of-code/ticket/1617
+
+Public URL: http://www.google-melange.com/gsoc/proposal/public/google/gsoc2014/mathi...
+
+Proposal
+
+My proposal is to implement the following ticket:
+https://ghc.haskell.org/trac/summer-of-code/ticket/1617
+The purpose is to have highly
+performant, library quality concurrent datastructures for haskell.
+These are to be implemented without locking using atomic operations.
+
+Specifically I want to implement an Hash Map.
+The proposal is based on the following ticket:
+https://ghc.haskell.org/trac/summer-of-code/ticket/1617
+Ryan Newton has already agreed to mentor me.
+
+My work will be in the following Repository:
+http://hub.darcs.net/mathias/Concurrent_Datastructures
+
+The Objective of my proposal is to have concurrent datastructures (hash maps, also queues, bags stacks, counters, some of witch are already implemented, I'll be only working on hash-maps ), as are already described in literature, or implemented in other languages, implemented lock free using the cas atomic operation. In order to achieve good performance with more accessing threads and under higher loads, than would be possible using datastructures employing locks. Basically what is described in this article: Shavit:Data Structures in the Multicore Age http://people.csail.mit.edu/shanir/publications/p76-shavit.pdf
+
+The original trac:
+https://ghc.haskell.org/trac/summer-of-code/ticket/1608
+I already did some research there, for other concurrent datastructures.
+
+
+Atomic operations:
+-wait for reader
+-compare and swap
+http://hackage.haskell.org/package/atomic-primops-0.6/docs/Data-Atomics.html
+
+At the moment only cas is implemented in Haskell
+
+
+Concurrent Hashtables:
+-Triplett, McKennedy, Walpole: Resizable, Scalable, Concurrent Hash Tables via Relativistic Programming
+uses wait for reader
+-Lock free hash Table: cliff click
+uses cas
+need to find paper or reference implementation
+
+Prototype:
+I am  going to implement an Prototype as an prove of concept and for familarization,
+it will be based on click, and be mostly reusable, the exact extend is to be determined, but it will not include resizing and probably not thread safe inserting except in the most primitiv form, maye without collision threatment. (community bonding period)
+
+Looking at some of the implementations like of a deque,
+while haskell is a functional programing language, the implmentation
+is in the IO Monad and uses imperative programing, mutable datatypes and pointers
+resulting in an programing  style  that closer to implementing in c++ or java.
+
+Haskell already has concurrent datastructures, implemented using locks,
+a new lock free datastructure should be able to be used as a plug-in replacment for these,
+adapting the interface is no problem, however it is important to consider implemention details like wether null is allowed as key or value, in terms of compitabilty with existing code.
+
+ 
+
+I  emphasize incremental development with the smallest possible increments adding functionality, and having an somewhat functional prototype at the earliest stage, and generally starting to write code as early as possible. I use prototypes and mock-ups for exploratory work and for discussions with clients.
+
+
+Development
+- Preliminary Interface (5/16)
+- Datastructure
+- debug functions
+- read (6/23)
+- write
+- automatic resize
+- backoff
+- non essential functions (size, isEmpty, getKeys etc.)
+- refactoring
+- finalize interface
+
+
+
+Testing:
+Test driven development.
+Refinement of testcases during the development process
+1. Single threated, basic hashmap functionality, including hash resizing
+2. Multithreated concurrency properties
+3. Single threated performance measurements
+3. Multithreated performance measurements on multicore pc
+4. Multithreated performance measurements on larger box
+
+Documentation:
+-final timetable &
+-functional spexification (community bonding period)
+
+
+what to study:
+I am going to do a few tutorial exercises in concurrent programing (4/21)
+
+- review literature about lock free hash maps (community bonding period)
+
+
+Biography, work and references:
+I am Mathias Bartl graduate student at the University Tübingen, Germany. My major is computer science with a minor in mathematics.
+I have a Bachelor Degree from the same University in Computer science. I am working on an masters thesis in cryptoanalysis.
+
+
+My work on Haskell includes writing a Library implementing multiple crypographic protocols using non-commutative groups,
+for research and experimental purpose.
+http://hub.darcs.net/mathias/Khnum/browse/Khnum.hs
+I am also at the moment working on patching the Permutation Group Implementation:
+http://hackage.haskell.org/package/HaskellForMaths-0.4.5/docs/Math-Algebra-Group-PermutationGroup.html
+
+My patch is in this Repository:
+http://hub.darcs.net/mathias/Noncommutative_Groups/browse/PermutationGroup.hs
+I am also writing further code for my Masters Thesis that is not publicaly available at the moment.
+
+
+Other software development experience:
+-For my Bachelors Thesis:
+Nessi P300 Brainbrowser, an Webbrowser adapted to be used via a Brain-Computer Interface by disabled people
+Repository:
+http://www.mozdev.org/source/browse/nessi/mathias/
+I also wrote a nice manual:
+http://www.mozdev.org/source/browse/~checkout~/nessi/mathias/documentation/user_manual.pdf?rev=1.5;content-type=application%2Fpdf
+
+-Buchsys:
+Working as a contractor for the Fachsprachenzentrum of the University Tübingen since Februar 2013.
+I am fully  responsible for the continuing development and maintenance of Buchsys, a system both for electronic enrollment in language courses, as well as for administration.
+There are about 14000 lines of code in Perl, SQL, Html/ Javascript.
+My work includes database design, as well as Web and Database-server Administration.
+Website: http://www.uni-tuebingen.de/einrichtungen/verwaltung-dezernate/iii-internationale-angelegenheiten/abteilung-4/fachsprachenzentrum.html
+Public interface for buchsys: http://www.uni-tuebingen.de/einrichtungen/verwaltung-dezernate/iii-internationale-angelegenheiten/abteilung-4/kursprogramm-online-einschreibung.html
+Contacts for reference: Palmizi, Duttlinger
+http://www.uni-tuebingen.de/einrichtungen/verwaltung-dezernate/iii-internationale-angelegenheiten/abteilung-4/kontakt-und-beratung/leitung-und-verwaltung.html
+I'll have a employment reference letter, graded as excellent, very good competency.
+
+
+relevant coursework:
+- advanced functional programing (Haskell Course)
+- operating systems ( multithreated programing)
+- parallel computing ( parallel complexity, highly parallel algorithms and datastructures)
+
