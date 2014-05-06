@@ -8,6 +8,17 @@ Additional info: https://ghc.haskell.org/trac/summer-of-code/ticket/1617
 
 Public URL: http://www.google-melange.com/gsoc/proposal/public/google/gsoc2014/mathi...
 
+ Concurrent Lock-Free Hash Map for Haskell
+MathiasBartl
+
+Organization: haskell.org
+
+Short description: My proposal is to implement the following ticket: https://ghc.haskell.org/trac/summer-of-code/ticket/1617 The purpose is to have highly performant, library quality concurrent datastructures for haskell. These are to be implemented without locking using atomic operations. Specifically I want to implement an Hash Map. Probably: Lock free hash Table by Cliff Click
+
+Additional info: https://ghc.haskell.org/trac/summer-of-code/ticket/1617
+
+Public URL: http://www.google-melange.com/gsoc/proposal/public/google/gsoc2014/mathi...
+
 Proposal
 
 My proposal is to implement the following ticket:
@@ -23,79 +34,105 @@ Ryan Newton has already agreed to mentor me.
 
 My work will be in the following Repository:
 http://hub.darcs.net/mathias/Concurrent_Datastructures
+I already wrote some stumps.
 
-The Objective of my proposal is to have concurrent datastructures (hash maps, also queues, bags stacks, counters, some of witch are already implemented, I'll be only working on hash-maps ), as are already described in literature, or implemented in other languages, implemented lock free using the cas atomic operation. In order to achieve good performance with more accessing threads and under higher loads, than would be possible using datastructures employing locks. Basically what is described in this article: Shavit:Data Structures in the Multicore Age http://people.csail.mit.edu/shanir/publications/p76-shavit.pdf
+ 
+
+ 
+
+The Objective of my proposal is to have concurrent datastructures (hash maps, also queues, bags stacks, counters, some of witch are already implemented, I'll be only working on hash-maps ); as are already described in literature, or implemented in other languages. They will be implemented lock free, using the cas (compare and swap) atomic operation. This will achieve good performance with more accessing threads and under higher loads, than would be possible using datastructures employing locks. Basically what is described in this article: Shavit:Data Structures in the Multicore Age http://people.csail.mit.edu/shanir/publications/p76-shavit.pdf
 
 The original trac:
 https://ghc.haskell.org/trac/summer-of-code/ticket/1608
 I already did some research there, for other concurrent datastructures.
 
 
-Atomic operations:
+Atomic operations (f.e.):
 -wait for reader
+-fetch and add
 -compare and swap
+compares the value of a variable with a value and changes it to another given value if there is a match.
+This is at the moment the most widely implemented atomic operation.
+
+There are many more atomic operations, some of witch are used in datastructures described in literature, but are not or seldom implemented in actual hardware.
+Since efficent use of atomics requires hardware support, therefore many datastructures described in literature are unimplementable in practice.
+
+Atomic operations are special assembly language commands, using them in a higher language requires compiler support, or the use of inline assembler or foreign language calls.
+At the moment only cas is supported in Haskell, for witch there is this new library:
 http://hackage.haskell.org/package/atomic-primops-0.6/docs/Data-Atomics.html
 
-At the moment only cas is implemented in Haskell
 
-
-Concurrent Hashtables:
+Concurrent lock free Hashtables (f.e.):
 -Triplett, McKennedy, Walpole: Resizable, Scalable, Concurrent Hash Tables via Relativistic Programming
 uses wait for reader
 -Lock free hash Table: cliff click
 uses cas
-need to find paper or reference implementation
+Java refernce implementation:
+https://github.com/boundary/high-scale-lib/blob/master/src/main/java/org/cliffc/high_scale_lib/NonBlockingHashMap.java
+In my opinion this is hard to read, because of the difficulty of seperating the abtract datastructure from the java implementation details.
+I need to find a  paper or implementation in another language.
+These slides describe the main idea but are otherwise confusing:
+http://www.azulsystems.com/events/javaone_2007/2007_LockFreeHash.pdf
 
 Prototype:
 I am  going to implement an Prototype as an prove of concept and for familarization,
 it will be based on click, and be mostly reusable, the exact extend is to be determined, but it will not include resizing and probably not thread safe inserting except in the most primitiv form, maye without collision threatment. (community bonding period)
 
-Looking at some of the implementations like of a deque,
-while haskell is a functional programing language, the implmentation
+Looking at some of the implementations, like that  of a deque in haskell.
+While haskell is a functional programing language, the implementation
 is in the IO Monad and uses imperative programing, mutable datatypes and pointers
 resulting in an programing  style  that closer to implementing in c++ or java.
 
 Haskell already has concurrent datastructures, implemented using locks,
-a new lock free datastructure should be able to be used as a plug-in replacment for these,
-adapting the interface is no problem, however it is important to consider implemention details like wether null is allowed as key or value, in terms of compitabilty with existing code.
+a new lock free datastructure should be able to be used as a plug-in replacment for these.
+Adapting the interface is no problem, however it is important to consider implementation details like whether null is allowed as key or value, in terms of compatibilty with existing code.
 
  
 
-I  emphasize incremental development with the smallest possible increments adding functionality, and having an somewhat functional prototype at the earliest stage, and generally starting to write code as early as possible. I use prototypes and mock-ups for exploratory work and for discussions with clients.
+In terms of methodology, I  emphasize incremental development with the smallest possible increments adding functionality. And having an somewhat functional prototype at the earliest stage, and generally starting to write code as early as possible. I use prototypes and mock-ups for exploratory work and for discussions with clients.
 
 
-Development
+Development (in this order:)
 - Preliminary Interface (5/16)
-- Datastructure
+- Datastructure, (the mutable variables actually holding the data)
 - debug functions
-- read (6/23)
-- write
+- read (midterm evaluation)
+- writing function (including replace, delete, etc) (maybe midterm evaluation)
 - automatic resize
 - backoff
-- non essential functions (size, isEmpty, getKeys etc.)
-- refactoring
+- non essential functions (size, isEmpty, getKeys etc.) (1 week before soft pencil down)
+- refactoring (soft pencil down)
 - finalize interface
 
 
 
 Testing:
-Test driven development.
-Refinement of testcases during the development process
+Test driven development (in this order):
+Refinement of fully automated testcases during the development process
 1. Single threated, basic hashmap functionality, including hash resizing
 2. Multithreated concurrency properties
-3. Single threated performance measurements
-3. Multithreated performance measurements on multicore pc
-4. Multithreated performance measurements on larger box
+This requires testing concurrent safety and liveness properties, like f.e.:
+serializability, linearizability, sequential consistency, quiescent consistency
+witch is  more challenging than testing correctness in a single threat case.
+Care is required to determine witch properties follow from the description of a datastructure, and witch are required for an algorithm.
+3. Single threated performance measurements (testcases funtil mitdterm evaluation)
+3. Multithreated performance measurements on multicore pc (testcases finished between midterm and pencil down)
+4. Multithreated performance measurements on larger box ( look for suitable system during community bonding period, actuall testing 1 week before soft pencil down)
+
+I'll do a more extended test plan in the community bonding period, as well as looking for test cases, that I can reuse.
+
 
 Documentation:
 -final timetable &
--functional spexification (community bonding period)
-
+-functional specification (community bonding period)
+ 
 
 what to study:
-I am going to do a few tutorial exercises in concurrent programing (4/21)
+-I am going to do a few tutorial exercises in concurrent programing (4/21)
+- review literature about lock free hash maps
+- reading up on verification of concurrent safety properties (community bonding period)
 
-- review literature about lock free hash maps (community bonding period)
+Also I'll have to talk to some more people, I have mostly discussed this with Ryan Newton.
 
 
 Biography, work and references:
@@ -103,8 +140,7 @@ I am Mathias Bartl graduate student at the University Tübingen, Germany. My maj
 I have a Bachelor Degree from the same University in Computer science. I am working on an masters thesis in cryptoanalysis.
 
 
-My work on Haskell includes writing a Library implementing multiple crypographic protocols using non-commutative groups,
-for research and experimental purpose.
+My work on Haskell includes writing a Library implementing multiple crypographic protocols using non-commutative groups, for research and experimental purposes.
 http://hub.darcs.net/mathias/Khnum/browse/Khnum.hs
 I am also at the moment working on patching the Permutation Group Implementation:
 http://hackage.haskell.org/package/HaskellForMaths-0.4.5/docs/Math-Algebra-Group-PermutationGroup.html
@@ -138,4 +174,40 @@ relevant coursework:
 - advanced functional programing (Haskell Course)
 - operating systems ( multithreated programing)
 - parallel computing ( parallel complexity, highly parallel algorithms and datastructures)
+- various courses in verification, including one with programing in scala
+
+ 
+8 comments
+
+Ketil March 20, 2014, 2:40 p.m.
+
+I'm very interested in this! Perhaps see also http://biohaskell.org/GSOC/kmerindex (although it may be too brief to be useful). The important thing for me is that it is reasonably compact - I don't know if that is a goal here, but the space usage is what makes all the normal finite maps useless, more so than parallelism or CPU cost.
+
+MathiasBartl March 20, 2014, 9:55 p.m.
+
+Hi, can I get back on your question later, I have to think about what you want. The Objectiv of my proposal is to have concurrent datastructures (hash maps, also ques, bags stacks, counters, some of witch are already implemented), as are already described in literature, or implemented in other languages, implemented lock free using the cas atomic operation. In order to achieve good performance with more accessing threads and under higher loads, than would be posible using datastructures employing locks. Basically what is described in this article: Shavit:Data Structures in the Multicore Age http://people.csail.mit.edu/shanir/publications/p76-shavit.pdf
+
+Carter March 20, 2014, 9:59 p.m.
+
+agreed, concurrent and compressed combined makes it a research problem, lets keep the scope manageable for a summer :)
+
+MathiasBartl March 21, 2014, 4:35 p.m.
+
+Excuse me, but how do I Hyperlink in the proposal?
+
+Ryan Newton March 22, 2014, 3:26 a.m.
+
+Hi Mathias, It's good to see you had a parallel computing course. What kinds of implementation tasks did that entail? Do you have experience hacking on concurrency-heavy code? For finite-maps, we now have a concurrent-skiplist-based implementation in LVish: https://github.com/iu-parfunc/lvars/blob/master/haskell/lvish/Data/Concurrent/SkipListMap.hs It currently is add-only (no remove), but this can provide one point of comparison for a new concurrent hashtable.
+
+Ketil March 22, 2014, 7:07 a.m.
+
+(Leaving this public, as I hope it is interesting also to others) So to answer the direct question: I don't have any particular data structure in mind. I only have an application (well, probably several) that I'd like to see faster or more frugal - the latter is more important, since the data structure can easily be tens of gigabytes, i.e. above the RAM size of your average PC. I expect a typical Haskell data type (e.g. Data.Map) would be ten times larger, i.e. hundreds of gigabytes. So this is not really useful for me. I think that in order to have a lightweight data structure, you need to avoid pointer-chasing structures, and pack keys and values in mutable arrays. I think it's an advantage if identical bits of keys can be shared (as in patricia trees, or if the key can be derived back from the hashed location in a hash table). A two level structure might be a good idea - a search tree for the first part of the key, and hash tables for the (more sparsely populated) rest. Anyway - my impression is that my use case is rather different from this project's, but if you want a benchmark for this, I have one that's easily adapted. (See e.g. http://blog.malde.org/posts/frequency-counting.html) In any case, I think it is an advantage to *have* a benchmark - perferably a real-world program that benefits from a better/parallel data structure.
+
+MathiasBartl March 25, 2014, 12:40 p.m.
+n
+Hi, regarding Ryans Question: I am just giving you the rought details because, it has been a while since I took these courses. The parallel computing course I mentioned was pretty abstract. We had execises but I don't think we did a lot of actual programing just writing algorithms and correctness and runtime proof stuff. The model we worked with were grids of computing nodes. The other course I was, was operating systems, it covered f.e. Processes, IPC with message passing and shared memory, threads, scheduling,mutexes, locks, semaphores, for witch we did exercises in C. I also did a course in chip design were we were programing in VHDL, witch of course is parallel. At the moment I started doing the lab erercises for Simon Marlowes Tutorial, and I'll have some of them done till the end of the week.
+
+MathiasBartl March 27, 2014, 10:07 p.m.
+
+Hi, at the moment I am thinking about what to do in terms of improving my application. As said one of the things I am doing ist some concurrency exercises from Simon Marlows Parallel and Concurrent Programming in Haskell Tutorial, at the moment I got parallel programing with eval, and concurrent programing using MVars with lots of IO code, I even worked a bit with the GHCI debugger. http://hub.darcs.net/mathias/Exercises_par-tutorial
 
