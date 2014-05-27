@@ -149,7 +149,47 @@ gregs homepage
 -http://en.wikipedia.org/wiki/Lambda_calculus
 very easy to understand, as long as you ignore the informal descriptions
 -http://stackoverflow.com/questions/6872898/haskell-what-is-weak-head-normal-form
+08.05.2014
+-http://www.haskell.org/haskellwiki/Arrays
+12.05.2014
+-http://hackage.haskell.org/package/criterion
+-https://github.com/bos/criterion
+-https://github.com/gregorycollins/hashtables/blob/master/benchmark/src/Main.hs
+-https://www.haskell.org/haskellwiki/IRC_channel
+21.05.2014
+-pub.ist.ac.at/courses/ppc10/slides/Linearizability.pptx
+ Herlihy's slides from The Art of Multiprocessor Programming
+good stuff about concurrent programing, got to look at the rest of thr course
+-http://stackoverflow.com/questions/4179587/difference-between-linearizability-and-serializability
+look at the references
+-http://en.wikipedia.org/wiki/Linearizability
+hard to understand
+-http://www.haskell.org/haskellwiki/Type#Type_and_newtype
+-http://hackage.haskell.org/package/array-0.1.0.0/docs/Data-Array-IO.html
+-http://hackage.haskell.org/package/array-0.1.0.0/docs/Data-Array-MArray.html
+todo study this
+-http://hackage.haskell.org/package/hashable-1.0.0/docs/src/Data-Hashable.html
+-http://hackage.haskell.org/package/hashmap-1.0.0.2/docs/Data-HashMap.html
+-hackage.haskell.org/package/base-4.5.1.0/docs/src/Data-HashTable.html
+-http://hackage.haskell.org/package/base-4.7.0.0/docs/Control-Monad-ST.html
+need to read more on st
+-http://hackage.haskell.org/package/base-4.7.0.0/docs/Control-Concurrent-MVar.html
+-http://hackage.haskell.org/package/array-0.5.0.0/docs/Data-Array-IO.html#t:IOUArray
+-https://github.com/blog
+23.05.2014
+-https://www.youtube.com/watch?v=WYXgtXWejRM
+click talk at stanford
+-http://www.stanford.edu/class/ee380/Abstracts/070221_LockFreeHash.pdf
+slides got aparently updated null==Tombstone now for values
+-http://en.wikipedia.org/wiki/Fence_instruction
+-http://blog.ezyang.com/2014/01/so-you-want-to-add-a-new-concurrency-primitive-to-ghc/
+that does not sound very good
+-http://en.wikipedia.org/wiki/Double-checked_locking
+27.05.2014
+-http://www.haskell.org/haskellwiki/Implementations
+
 reading list:
+
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
 haskell channels
 http://darcs.net/manual/
@@ -160,3 +200,5 @@ http://www.haskell.org/haskellwiki/Type_families
 read copy update
 https://github.com/rrnewton/ghc/tree/atomicPrimOps
 http://www.cs.yale.edu/homes/aspnes/classes/465/notes.pdf
+http://hackage.haskell.org/package/array-0.1.0.0/docs/Data-Array-MArray.html
+http://hackage.haskell.org/package/hashmap-1.0.0.2/docs/Data-HashMap.html
