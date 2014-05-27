@@ -42,9 +42,13 @@ min_size_log = 3
 min_size = 2 ^ min_size_log --must be power of 2, compiler should turn this into a constant
 
 
+type SlotsIndex = Int
+
+type Slots key val = UArray SlotsIndex (State key val)
+
 data ConcurrentHashTable key val = ConcurrentHashTable {
-		slots :: UArray Int (State key val)}
---TODO different Int
+		slots :: Slots key val}
+
 
 
 
@@ -56,7 +60,10 @@ insert :: ConcurrentHashTable key val -> key -> val -> IO ()
 insert hash k v = return ()
 
 lookup :: ConcurrentHashTable key val -> key -> IO ( Maybe val)
-lookup hash k = return Nothing
+lookup table k = return Nothing
+--	where getSlot :: ConcurrentHashTable key val -> key -> IO (State key val)
 
 delete :: ConcurrentHashTable key val -> key -> IO ()
 delete hash k =  return ()
+	
+
