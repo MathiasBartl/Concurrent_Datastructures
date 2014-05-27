@@ -19,20 +19,38 @@
 
 
 module Data.HashTables.IO.Placeholder 
-	( ConcurrentHashTable, new, insert, Data.HashTables.IO.Placeholder.lookup, delete, 
+	( ConcurrentHashTable,  insert, Data.HashTables.IO.Placeholder.lookup, delete, 
 	)
 	where
 
+import GHC.IORef(IORef(IORef))
+import Data.Array.Unboxed(UArray)
 
--- Null : empty
-data Key key = KNull | K key | KX
--- Null : empty, T : Tombstone
-data Value value = VNull | T | V value | VX
+-- Kempty : empty, K : neverchanging key
+data Key key = Kempty | K key 
+-- T : empty, tombstone, Tp : tombstone primed, V : value, Vp : value primed
+data Value value =  T | Tp |V value | Vp value 
 
-data ConcurrentHashTable key val = ConcurrentHashTable {}
+data State k v =   State {
+				key :: IORef (Key k)
+				, value :: IORef (Value v)
+				}
 
-new :: IO (ConcurrentHashTable a b)
-new = return ConcurrentHashTable
+
+
+min_size_log = 3
+min_size = 2 ^ min_size_log --must be power of 2, compiler should turn this into a constant
+
+
+data ConcurrentHashTable key val = ConcurrentHashTable {
+		slots :: UArray Int (State key val)}
+--TODO different Int
+
+
+
+
+-- new :: IO (ConcurrentHashTable a b)
+-- new = return ConcurrentHashTable
 
 insert :: ConcurrentHashTable key val -> key -> val -> IO ()
 insert hash k v = return ()
