@@ -23,6 +23,12 @@ module Data.HashTables.IO.Placeholder
 	)
 	where
 
+
+-- Null : empty
+data Key key = KNull | K key | KX
+-- Null : empty, T : Tombstone
+data Value value = VNull | T | V value | VX
+
 data ConcurrentHashTable key val = ConcurrentHashTable {}
 
 new :: IO (ConcurrentHashTable a b)
