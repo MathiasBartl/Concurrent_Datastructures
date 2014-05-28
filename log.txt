@@ -187,7 +187,10 @@ that does not sound very good
 -http://en.wikipedia.org/wiki/Double-checked_locking
 27.05.2014
 -http://www.haskell.org/haskellwiki/Implementations
-
+-http://bartoszmilewski.com/2008/11/05/who-ordered-memory-fences-on-an-x86/
+28.05.2014
+-http://en.wikipedia.org/wiki/Transactional_Synchronization_Extensions
+-http://en.wikipedia.org/wiki/Mask_%28computing%29
 reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
