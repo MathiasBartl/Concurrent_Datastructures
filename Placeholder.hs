@@ -1,3 +1,6 @@
+
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-
     Concurrent Hashmap - 
     Copyright (C) 2014  Mathias Bartl
@@ -23,12 +26,14 @@ module Data.HashTables.IO.Placeholder
 	)
 	where
 
-import GHC.IORef(IORef(IORef), readIORef)
+import GHC.IORef(IORef(IORef), readIORef, newIORef)
 import Data.Array.Unboxed(UArray)
 import Data.Hashable(Hashable, hash)
 -- import Data.Array.IArray((!))
-import Data.Array.Unboxed((!))
+import Data.Array.Unboxed((!), IArray)
 import Data.Bits((.&.)) 
+import Data.Atomics
+--todo restrict and qualify
 
 
 -- Kempty : empty, K : neverchanging key
@@ -66,9 +71,12 @@ data ConcurrentHashTable key val = ConcurrentHashTable {
 -- TODO, use fitting hash function
 --getSlot :: Hashable key => Slots key val -> Mask -> key -> State key val
 --getSlot :: Hashable key => UArray SlotsIndex (State key val) -> Mask -> key -> State key val
+--getSlot :: (Data.Array.Unboxed.IArray a e, Hashable key) =>  a SlotsIndex e -> Mask -> key -> e
+--getSlot :: (Data.Array.Unboxed.IArray a Int, Hashable key) =>  a SlotsIndex Int -> Mask -> key -> Int
+getSlot :: (Data.Array.Unboxed.IArray a (State key value), Hashable key) =>  a SlotsIndex (State key value) -> Mask -> key -> (State key value)
 getSlot slots mask key = slots ! ( hsh key mask) --TODO apply collision treatment
 		where hsh :: (Hashable key) => key -> Mask -> SlotsIndex
-		      hsh k m = (hash k)  .&. m--TODO apply mask
+		      hsh k m = (hash k)  .&. m
  --TODO use forall
 -- new :: IO (ConcurrentHashTable a b)
 -- new = return ConcurrentHashTable
@@ -82,8 +90,8 @@ lookup table k = do
 		slotkey <- readIORef ( key slot)
 		slotvalue <- readIORef (value slot)
 		return $ getValue slotkey slotvalue
-	where getSlot :: ConcurrentHashTable key val -> key -> State key val
-	      getSlot tbl key = getSlot (slots tbl) (mask tbl)  
+	where --getSlot :: ConcurrentHashTable key val -> key -> State key val
+	      --getSlot tbl key = getSlot (slots tbl) (mask tbl)  
  
 	      getValue :: Key key -> Value val -> Maybe val
 	      getValue Kempty _ = Nothing
@@ -91,4 +99,37 @@ lookup table k = do
 --}
 delete :: ConcurrentHashTable key val -> key -> IO ()
 delete hash k =  return ()
-	
+
+--gets the next index for collision treatment
+--collision:: SlotsIndex -> Mask -> SlotsIndex
+
+readKeySlot:: State key value -> IO (Key key)
+readKeySlot state = do
+			readIORef ( key state  )
+		
+readValueSlot:: State key value -> IO (Value value)
+readValueSlot state = do
+			readIORef ( value state  )
+--TODO various functions that operate on Stat and use primeops
+--TODO collision treatment	
+
+
+--TODO Question When are 2 Keys equal, and why does ticket not require a to be in class eq
+casKeySlot :: forall key value. (State key value) -> Key key -> Key key -> IO ( Bool )
+casKeySlot (State ke va) old new = do
+				oldref <- (newIORef old)::IO(IORef (Key key))
+				newref <- (newIORef new)::IO(IORef (Key key))
+				oldticket <- (readForCAS oldref) ::IO(Ticket(Key key))
+				newticket <- (readForCAS newref) ::IO(Ticket(Key key))
+				(returnvalue, _) <- (casIORef2 ke oldticket newticket)::IO(Bool, Ticket(Key key)) 
+				return returnvalue					
+
+--TODO, see casKeySlot
+casValueSlot :: forall key value. (State key value) -> Value value -> Value value -> IO ( Bool )
+casValueSlot (State ke va) old new = do
+				oldref <- (newIORef old)::IO(IORef (Value value))
+				newref <- (newIORef new)::IO(IORef (Value value))
+				oldticket <- (readForCAS oldref) ::IO(Ticket(Value value))
+				newticket <- (readForCAS newref) ::IO(Ticket(Value value))
+				(returnvalue, _) <- (casIORef2 va oldticket newticket)::IO(Bool, Ticket(Value value)) 
+				return returnvalue
