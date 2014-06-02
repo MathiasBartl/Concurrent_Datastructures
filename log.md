@@ -247,6 +247,11 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://en.wikipedia.org/wiki/Transactional_Synchronization_Extensions
  - http://en.wikipedia.org/wiki/Mask_%28computing%29
 
+# 01.06.2014
+
+ - http://www.haskell.org/ghc/docs/7.8.2/html/users_guide/assertions.html
+ - http://hackage.haskell.org/package/assert-0.0.1.1/docs/Control-Exception-Assert.html
+
 reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
