@@ -34,6 +34,7 @@ import Data.Array.Unboxed((!), IArray)
 import Data.Bits((.&.)) 
 import Data.Atomics
 --todo restrict and qualify
+import Control.Exception(assert)
 
 
 
@@ -47,7 +48,7 @@ getMask size = size -1 --if size_log == 1 then 1 else (getMask ( size_log -1) )*
 --data representation
 ---------------------------------------------------------------------------------------------------------------------------------
 -- Kempty : empty, K : neverchanging key
-data Key key = Kempty | K key 
+data Key key = Kempty | K key  --TODO make instance of Eq 
 -- T : empty, tombstone, Tp : tombstone primed, V : value, Vp : value primed
 data Value value =  T | Tp |V value | Vp value 
 
@@ -60,6 +61,7 @@ data State k v =   State {
 data Kvs k v =   Kvs {
 	newkvs :: IORef ( Maybe (Kvs k v))
 	,slots :: Slots k v 
+	, mask :: Mask
 }
 
 
@@ -105,7 +107,7 @@ getSlot slots mask key =  do	--slot <- (return ( slots ! ( hsh key mask)))::IO(S
 							slot <- (return (slots !  idx))::IO(State key value)
 							oldkey <- (readKeySlot slot)::IO(Key key)
 							slot <- (if full oldkey newkey then getSlt slots newkey (collision idx mask) mask else return slot)::IO(State key value)
-							return slot 
+							return slot --TODO count reprobes 
 
 --new :: IO (ConcurrentHashTable a b)
 --new = return $ ConcurrentHashTable $ newIORef $ Nothing array $ (0 , min_size -1) --TODO
@@ -171,8 +173,21 @@ casValueSlot (State ke va) old new = do
 				(returnvalue, _) <- (casIORef2 va oldticket newticket)::IO(Bool, Ticket(Value value)) 
 				return returnvalue
 
+--setValueSlot :: forall key value. (State key value) -> Value value -> Value value -> IO ( Bool )
+
+
 --TODO, do we need to pass the Hashtable as parameter?
---TODO assert key is not empty, putval is no empty, but possibly a tombstone
-putIfMatch :: Kvs key value -> Key key -> Value value -> Value value -> IO ()
-putIfMatch kvs key putVal expVal = do   
+--TODO assert key is not empty, putval is no empty, but possibly a tombstone, key value are not primed 
+putIfMatch :: forall key value. (Hashable key, Eq key) => Kvs key value -> Key key -> Value value -> Value value -> IO ()
+putIfMatch kvs key putVal expVal = do   reprobe_cnt <- return 0
+					return $ assert (keyComp key  Kempty) --TODO use eq
+					slots <- (return $ slots kvs) :: IO(Slots key value)
+					mask <- (return $ mask kvs)::IO(Mask)
+					K k <- (return key)::IO(Key key)
+					--slot <- (getSlot slots mask k)::IO(State key value) --FIXME Type problem
+					--TODO if putvall TMBSTONE and oldkey == empty do nothing
+					oldKey <-  readKeySlot slot
+					if oldKey == Kempty then (if putVal == T then return(){-TODO break writing value unnecessary -} else (if casKeySlot slot oldKey key then return (){- TODO write value, increase slot counter -} else return (){- TODO reprobe-}) )  else return () {- TODO test if it is the same key then either reprobe, or write value  -} 
+
+--TODO when would cas fail
 					return ()   
