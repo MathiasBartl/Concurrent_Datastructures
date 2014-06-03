@@ -178,16 +178,25 @@ casValueSlot (State ke va) old new = do
 
 --TODO, do we need to pass the Hashtable as parameter?
 --TODO assert key is not empty, putval is no empty, but possibly a tombstone, key value are not primed 
-putIfMatch :: forall key value. (Hashable key, Eq key) => Kvs key value -> Key key -> Value value -> Value value -> IO ()
-putIfMatch kvs key putVal expVal = do   reprobe_cnt <- return 0
-					return $ assert (keyComp key  Kempty) --TODO use eq
-					slots <- (return $ slots kvs) :: IO(Slots key value)
-					mask <- (return $ mask kvs)::IO(Mask)
-					K k <- (return key)::IO(Key key)
-					--slot <- (getSlot slots mask k)::IO(State key value) --FIXME Type problem
-					--TODO if putvall TMBSTONE and oldkey == empty do nothing
-					oldKey <-  readKeySlot slot
-					if oldKey == Kempty then (if putVal == T then return(){-TODO break writing value unnecessary -} else (if casKeySlot slot oldKey key then return (){- TODO write value, increase slot counter -} else return (){- TODO reprobe-}) )  else return () {- TODO test if it is the same key then either reprobe, or write value  -} 
+putIfMatch :: forall key value. (Hashable key, Eq key) =>
+              Kvs key value -> Key key -> Value value -> Value value -> IO ()
+putIfMatch kvs key putVal expVal = do
+  reprobe_cnt <- return 0
+  return $ assert (keyComp key  Kempty) --TODO use eq
+  slots <- (return $ slots kvs)   ::IO(Slots key value)
+  mask  <- (return $ mask kvs)    ::IO(Mask)
+  K k   <- (return key)           ::IO(Key key)
+  slot  <- (getSlot slots mask k) ::IO(State key value) --FIXME Type problem
+  --TODO if putvall TMBSTONE and oldkey == empty do nothing
+  oldKey <-  readKeySlot slot
+  if oldKey == Kempty
+    then (if putVal == T
+          then return() {-TODO break writing value unnecessary -}
+          else (do b <- undefined -- casKeySlot slot oldKey key
+                   if b
+                   then return (){- TODO write value, increase slot counter -}
+                   else return (){- TODO reprobe-}) )
+    else return () {- TODO test if it is the same key then either reprobe, or write value  -} 
 
---TODO when would cas fail
-					return ()   
+  --TODO when would cas fail
+  return ()   
