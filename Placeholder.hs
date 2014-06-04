@@ -22,7 +22,7 @@
 
 
 module Data.HashTables.IO.Placeholder 
-	( ConcurrentHashTable,  insert,  delete, 
+	( ConcurrentHashTable, size, isEmpty, containsKey, containsValue, put, putIfAbsent, removeKey, remove, replace , replaceTest, clear, get 
 	)
 	where
 
@@ -49,9 +49,9 @@ getMask size = size -1 --if size_log == 1 then 1 else (getMask ( size_log -1) )*
 --data representation
 ---------------------------------------------------------------------------------------------------------------------------------
 -- Kempty : empty, K : neverchanging key
-data Key key = Kempty | K key  --TODO make instance of Eq 
+data Key key = Kempty | K key deriving (Eq) --TODO make instance of Eq 
 -- T : empty, tombstone, Tp : tombstone primed, V : value, Vp : value primed
-data Value value =  T | Tp |V value | Vp value 
+data Value value =  T | Tp |V value | Vp value deriving (Eq) --TODO what kind of comparision is used
 
 data State k v =   State {
 				key :: IORef (Key k)
@@ -71,6 +71,7 @@ type SlotsCounter = AtomicCounter
 
 type SlotsIndex = Int
 type Mask = SlotsIndex
+type Size = Int
 
 
 type Slots key val = UArray SlotsIndex (State key val) --TODO issue accessing the array generates a full copy, fix this latter 
@@ -122,8 +123,7 @@ keyComp Kempty _      = False
 keyComp _     Kempty  = False
 keyComp (K k1) (K k2) = k1 == k2 --TODO eqality on key waht about hashes
 
-insert :: ConcurrentHashTable key val -> key -> val -> IO ()
-insert hash k v = return ()
+
 {--
 lookup :: Hashable key => ConcurrentHashTable key val -> key -> IO ( Maybe val)
 lookup table k = do
@@ -138,8 +138,7 @@ lookup table k = do
 	      getValue Kempty _ = Nothing
 	      getValue (K _) v  = Just v 
 --}
-delete :: ConcurrentHashTable key val -> key -> IO ()
-delete hash k =  return ()
+
 
 --gets the next index for collision treatment
 --collision:: SlotsIndex -> Mask -> SlotsIndex
@@ -180,7 +179,7 @@ casValueSlot (State ke va) old new = do
 
 --TODO, do we need to pass the Hashtable as parameter?
 --TODO assert key is not empty, putval is no empty, but possibly a tombstone, key value are not primed 
-putIfMatch :: forall key value. (Hashable key, Eq key) =>
+putIfMatch :: forall key value. (Hashable key, Eq key, Eq value) =>
               Kvs key value -> Key key -> Value value -> Value value -> IO ()
 putIfMatch kvs key putVal expVal = do
   reprobe_cnt <- return 0
@@ -201,7 +200,7 @@ putIfMatch kvs key putVal expVal = do
     else return () {- TODO test if it is the same key then either reprobe, or write value  -} 
 
 --TODO when would cas fail
-					return ()   
+  return ()   
 
 
 
@@ -209,3 +208,55 @@ incSlotsCounter :: Kvs key value -> IO ()
 incSlotsCounter kvs = do
 			counter <- return $ slotsCounter kvs
 			incrCounter_ 1 counter
+
+--Exported functions
+-------------------------------------------------------------------------------------------------------------
+
+-- | Returns the number of key-value mappings in this map
+size :: ConcurrentHashTable key val -> IO(Size)
+--TODO low priority
+
+
+isEmpty :: ConcurrentHashTable key val -> IO(Bool)
+isEmpty table = return $ (size table) == 0 
+
+
+-- | Tests if the key in the table
+containsKey :: ConcurrentHashTable key val -> key -> IO(Bool)
+containsKey table key = return $ not $ (get key) == Nothing
+
+
+
+containsValue ::  ConcurrentHashTable key val -> val -> IO(Bool)
+--TODO low priority
+
+put :: ConcurrentHashTable key val -> key -> val -> IO()
+--TODO middle priority
+
+putIfAbsent :: ConcurrentHashTable key val -> key -> val -> IO()
+--TODO middle priority
+
+-- | Removes the key (and its corresponding value) from this map.
+removeKey :: ConcurrentHashTable key val -> key -> IO()
+--TODO middle priority
+
+-- | Removes key if matched.
+remove :: ConcurrentHashTable key val -> key -> val -> IO()
+--TODO middle priority
+
+replace :: ConcurrentHashTable key val -> key -> val -> IO()
+--TODO middle priority
+
+replaceTest :: ConcurrentHashTable key val -> key -> val -> IO(Bool)
+--TODO middle priority
+
+-- | Removes all of the mappings from this map.
+clear :: ConcurrentHashTable key val -> IO()
+--TODO low priority
+
+-- | Returns the value to which the specified key is mapped.
+get :: ConcurrentHashTable key val -> key ->  IO( Maybe value)
+--TODO High Priority
+
+--TODO add new for default and arbitrary size 
+--TODO somehow represent NO_MATCH_OLD and MATCH_ANY for putIfMatch 
