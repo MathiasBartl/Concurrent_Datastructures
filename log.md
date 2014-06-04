@@ -252,6 +252,19 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://www.haskell.org/ghc/docs/7.8.2/html/users_guide/assertions.html
  - http://hackage.haskell.org/package/assert-0.0.1.1/docs/Control-Exception-Assert.html
 
+# 02.06.2014
+
+ - https://hackage.haskell.org/
+ - https://hackage.haskell.org/upload
+   apparently I already got an hackage account, username:MathiasBartl
+ - http://www.haskell.org/haddock/
+ - http://www.haskell.org/haddock/doc/html/index.html
+
+# 03.06.2014
+
+ - http://hackage.haskell.org/package/atomic-primops-0.6.0.5/docs/src/Data-Atomics-Counter.html
+ - http://hackage.haskell.org/package/atomic-primops-0.6.0.5/docs/Data-Atomics-Counter-Unboxed.html
+
 reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
@@ -266,3 +279,5 @@ https://github.com/rrnewton/ghc/tree/atomicPrimOps
 http://www.cs.yale.edu/homes/aspnes/classes/465/notes.pdf
 http://hackage.haskell.org/package/array-0.1.0.0/docs/Data-Array-MArray.html
 http://hackage.haskell.org/package/hashmap-1.0.0.2/docs/Data-HashMap.html
+http://www.haskell.org/haddock/doc/html/index.html
+https://help.github.com/articles/github-flavored-markdown

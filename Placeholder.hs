@@ -35,6 +35,7 @@ import Data.Bits((.&.))
 import Data.Atomics
 --todo restrict and qualify
 import Control.Exception(assert)
+import Data.Atomics.Counter
 
 
 
@@ -62,10 +63,11 @@ data Kvs k v =   Kvs {
 	newkvs :: IORef ( Maybe (Kvs k v))
 	,slots :: Slots k v 
 	, mask :: Mask
+	, slotsCounter :: SlotsCounter 
 }
 
 
- 
+type SlotsCounter = AtomicCounter
 
 type SlotsIndex = Int
 type Mask = SlotsIndex
@@ -187,7 +189,14 @@ putIfMatch kvs key putVal expVal = do   reprobe_cnt <- return 0
 					--slot <- (getSlot slots mask k)::IO(State key value) --FIXME Type problem
 					--TODO if putvall TMBSTONE and oldkey == empty do nothing
 					oldKey <-  readKeySlot slot
-					if oldKey == Kempty then (if putVal == T then return(){-TODO break writing value unnecessary -} else (if casKeySlot slot oldKey key then return (){- TODO write value, increase slot counter -} else return (){- TODO reprobe-}) )  else return () {- TODO test if it is the same key then either reprobe, or write value  -} 
+					if oldKey == Kempty then (if putVal == T then return(){-TODO break writing value unnecessary -} else (if casKeySlot slot oldKey key then return (){- TODO write value, increase slot counter -} else return (){- TODO reprobe-}) )  else return () {- TODO test if it is the same key then either reprobe, or write value, and increase slot counter  -} 
 
 --TODO when would cas fail
 					return ()   
+
+
+
+incSlotsCounter :: Kvs key value -> IO ()
+incSlotsCounter kvs = do
+			counter <- return $ slotsCounter kvs
+			incrCounter_ 1 counter
