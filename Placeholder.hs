@@ -215,11 +215,10 @@ incSlotsCounter kvs = do
 -- | Returns the number of key-value mappings in this map
 size :: ConcurrentHashTable key val -> IO(Size)
 --TODO low priority
-
+size = undefined
 
 isEmpty :: ConcurrentHashTable key val -> IO(Bool)
 isEmpty table = return $ (size table) == 0 
-
 
 -- | Tests if the key in the table
 containsKey :: ConcurrentHashTable key val -> key -> IO(Bool)
@@ -229,34 +228,44 @@ containsKey table key = return $ not $ (get key) == Nothing
 
 containsValue ::  ConcurrentHashTable key val -> val -> IO(Bool)
 --TODO low priority
+containsValue = undefined
+
 
 put :: ConcurrentHashTable key val -> key -> val -> IO()
 --TODO middle priority
+put = undefined
 
 putIfAbsent :: ConcurrentHashTable key val -> key -> val -> IO()
 --TODO middle priority
+putIfAbsent = undefined
 
 -- | Removes the key (and its corresponding value) from this map.
 removeKey :: ConcurrentHashTable key val -> key -> IO()
 --TODO middle priority
+removeKey = undefined
 
 -- | Removes key if matched.
 remove :: ConcurrentHashTable key val -> key -> val -> IO()
 --TODO middle priority
+remove = undefined
 
 replace :: ConcurrentHashTable key val -> key -> val -> IO()
 --TODO middle priority
+replace = undefined
 
 replaceTest :: ConcurrentHashTable key val -> key -> val -> IO(Bool)
 --TODO middle priority
+replaceTest = undefined
 
 -- | Removes all of the mappings from this map.
 clear :: ConcurrentHashTable key val -> IO()
 --TODO low priority
+clear = undefined
 
 -- | Returns the value to which the specified key is mapped.
 get :: ConcurrentHashTable key val -> key ->  IO( Maybe value)
 --TODO High Priority
+get = undefined
 
 --TODO add new for default and arbitrary size 
 --TODO somehow represent NO_MATCH_OLD and MATCH_ANY for putIfMatch 
