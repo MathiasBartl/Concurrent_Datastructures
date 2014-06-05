@@ -22,15 +22,16 @@
 
 
 module Data.HashTables.IO.Placeholder 
-	( ConcurrentHashTable, size, isEmpty, containsKey, containsValue, put, putIfAbsent, removeKey, remove, replace , replaceTest, clear, get 
-	)
+	-- ( ConcurrentHashTable, size, isEmpty, containsKey, containsValue, put,
+        --   putIfAbsent, removeKey, remove, replace , replaceTest, clear, get 
+	-- )
 	where
 
 import GHC.IORef(IORef(IORef), readIORef, newIORef)
-import Data.Array.Unboxed(UArray)
 import Data.Hashable(Hashable, hash)
--- import Data.Array.IArray((!))
-import Data.Array.Unboxed((!), IArray)
+import Data.Array.IArray((!), IArray, Array)
+-- import Data.Array.Unboxed(UArray)
+-- import Data.Array.Unboxed((!), IArray)
 import Data.Bits((.&.)) 
 import Data.Atomics
 --todo restrict and qualify
@@ -74,7 +75,7 @@ type Mask = SlotsIndex
 type Size = Int
 
 
-type Slots key val = UArray SlotsIndex (State key val) --TODO issue accessing the array generates a full copy, fix this latter 
+type Slots key val = Array SlotsIndex (State key val) --TODO issue accessing the array generates a full copy, fix this latter 
 
 data ConcurrentHashTable key val = ConcurrentHashTable {
 		--slots :: Slots key val --TODO, even if imutable it should be an IORef otherwise every handl to the hashmap will contain the whole array		
@@ -85,16 +86,15 @@ data ConcurrentHashTable key val = ConcurrentHashTable {
 
 -- does not terminate if array is full, and key is not in it
 -- TODO, use fitting hash function
---getSlot :: Hashable key => Slots key val -> Mask -> key -> State key val
---getSlot :: Hashable key => UArray SlotsIndex (State key val) -> Mask -> key -> State key val
---getSlot :: (Data.Array.Unboxed.IArray a e, Hashable key) =>  a SlotsIndex e -> Mask -> key -> e
---getSlot :: (Data.Array.Unboxed.IArray a Int, Hashable key) =>  a SlotsIndex Int -> Mask -> key -> Int
-getSlot :: forall key value a. (Data.Array.Unboxed.IArray a (State key value), Hashable key, Eq key) =>  a SlotsIndex (State key value) -> Mask -> key -> IO(State key value)
+
+getSlot :: forall key value . (Hashable key, Eq key) =>  
+           Slots key value -> Mask -> key -> IO(State key value)
 getSlot slots mask key =  do	--slot <- (return ( slots ! ( hsh key mask)))::IO(State key value) 
 				--oldkey <- (readKeySlot slot)::IO(Key key)
 				idx <- return $ hsh key mask
 				newkey <- (return $ K key)::IO(Key key)
-				--slot <- (if full oldkey newkey then return slot else return slot)::IO(State key value) --TODO apply collision treatment
+				--slot <- (if full oldkey newkey then return slot else return slot)::IO(State key value)
+                                  --TODO apply collision treatment
 				slot <- getSlt slots newkey idx mask
 --collision treatment has to be done again on a write should the key cas fail
 				return slot
@@ -106,11 +106,13 @@ getSlot slots mask key =  do	--slot <- (return ( slots ! ( hsh key mask)))::IO(S
 		      full  Kempty _ = False
 		      full  k1 k2 = not (keyComp k1 k2)
 		      --getSlt:: Slots key value -> Key key -> SlotsIndex -> Mask -> IO(State key value)--TODO fix type
-		      getSlt slots newkey idx mask = do
-							slot <- (return (slots !  idx))::IO(State key value)
-							oldkey <- (readKeySlot slot)::IO(Key key)
-							slot <- (if full oldkey newkey then getSlt slots newkey (collision idx mask) mask else return slot)::IO(State key value)
-							return slot --TODO count reprobes 
+		      getSlt slots newkey idx mask =
+                        do let slot = (slots ! idx) :: (State key value)
+                           oldkey <- (readKeySlot slot)::IO(Key key)
+                           slot <- (if full oldkey newkey
+                                    then getSlt slots newkey (collision idx mask) mask
+                                    else return slot) :: IO (State key value)
+                           return slot --TODO count reprobes 
 
 --new :: IO (ConcurrentHashTable a b)
 --new = return $ ConcurrentHashTable $ newIORef $ Nothing array $ (0 , min_size -1) --TODO
@@ -176,7 +178,7 @@ casValueSlot (State ke va) old new = do
 
 --setValueSlot :: forall key value. (State key value) -> Value value -> Value value -> IO ( Bool )
 
-
+{-
 --TODO, do we need to pass the Hashtable as parameter?
 --TODO assert key is not empty, putval is no empty, but possibly a tombstone, key value are not primed 
 putIfMatch :: forall key value. (Hashable key, Eq key, Eq value) =>
@@ -269,3 +271,5 @@ get = undefined
 
 --TODO add new for default and arbitrary size 
 --TODO somehow represent NO_MATCH_OLD and MATCH_ANY for putIfMatch 
+
+-}
