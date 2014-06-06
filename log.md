@@ -277,6 +277,9 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://hackage.haskell.org/package/vector-0.10.11.0/docs/Data-Vector.html
    replicateM should serve to initialise the hashtable
  - http://www.haskell.org/haskellwiki/Numeric_Haskell:_A_Vector_Tutorial
+   2.3.5 Filling with a monadic action
+
+
 reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

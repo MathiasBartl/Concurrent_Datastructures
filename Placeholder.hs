@@ -27,14 +27,15 @@ module Data.HashTables.IO.Placeholder
 	where
 
 import GHC.IORef(IORef(IORef), readIORef, newIORef)
-import Data.Array.Unboxed(UArray)
+--import Data.Array.Unboxed(UArray)
 import Data.Hashable(Hashable, hash)
-import Data.Array.IArray((!), IArray, Array)
+--import Data.Array.IArray((!), IArray, Array)
 import Data.Bits((.&.), shiftR) 
 import Data.Atomics
 --todo restrict and qualify
 import Control.Exception(assert)
 import Data.Atomics.Counter
+import qualified Data.Vector as V
 
 
 
@@ -42,8 +43,8 @@ min_size_log = 3
 min_size = 2 ^ min_size_log --must be power of 2, compiler should turn this into a constant
 
 
-getMask:: SizeLog -> Mask
-getMask size = size -1 --if size_log == 1 then 1 else (getMask ( size_log -1) )* 2 + 1
+getMask:: Size -> Mask
+getMask size = size -1 
 
 --data representation
 ---------------------------------------------------------------------------------------------------------------------------------
@@ -59,7 +60,7 @@ data State k v =   State {
 
 
 data Kvs k v =   Kvs {
-	newkvs :: IORef ( Maybe (Kvs k v))
+	newkvs :: Maybe (IORef ( Kvs k v))
 	,slots :: Slots k v 
 	, mask :: Mask
 	, slotsCounter :: SlotsCounter 
@@ -75,7 +76,9 @@ type Size = Int
 type SizeLog = Int
 
 
-type Slots key val = Array SlotsIndex (State key val) --TODO issue accessing the array generates a full copy, fix this latter 
+--type Slots key val = Array SlotsIndex (State key val)
+type Slots key val = V.Vector (State key val)
+--TODO issue accessing the array generates a full copy, fix this latter 
 
 data ConcurrentHashTable key val = ConcurrentHashTable {
 		--slots :: Slots key val --TODO, even if imutable it should be an IORef otherwise every handl to the hashmap will contain the whole array		
@@ -107,7 +110,7 @@ getSlot slots mask key =  do	let idx = hsh key mask
 		      full  k1 k2 = not (keyComp k1 k2)
 		      --getSlt:: Slots key value -> Key key -> SlotsIndex -> Mask -> IO(State key value)--TODO fix type
 		      getSlt slots newkey idx mask =
-                        do let slot = (slots ! idx) :: (State key value)
+                        do let slot = (slots V.! idx) :: (State key value)
                            oldkey <- (readKeySlot slot)::IO(Key key)
                            slot <- (if full oldkey newkey
                                     then getSlt slots newkey (collision idx mask) mask
@@ -312,7 +315,7 @@ get table key = do let fullhash = hash key --TODO use the right hashfunctio here
 
 -- | Create a new NonBlockingHashtable with default minimum size (currently set
 --    to 8 K/V pairs)
-newConcurrentHashTable :: ConcurrentHashTable key val
+newConcurrentHashTable :: IO(ConcurrentHashTable key val)
 newConcurrentHashTable = newConcurrentHashTableHint min_size
 
 -- |Create a new NonBlockingHashtable with initial room for the given number of
@@ -320,16 +323,31 @@ newConcurrentHashTable = newConcurrentHashTableHint min_size
 -- appropriate size. Large numbers here when used with a small count of
 -- elements will sacrifice space for a small amount of time gained. The
 -- initial size will be rounded up internally to the next larger power of 2.
-newConcurrentHashTableHint :: Size -> ConcurrentHashTable key val
-newConcurrentHashTableHint = undefined
+newConcurrentHashTableHint :: Size -> IO(ConcurrentHashTable key val)
+newConcurrentHashTableHint hint = do let size = normSize hint
+				     kvs <- newKvs size
+				     kvsref <- newIORef kvs
+				     return $ ConcurrentHashTable kvsref                                    
 --TODO medium priority
 --TODO throw error if size <0
-	where
-		-- Returns the next larger potency of 2
+	where	-- Returns the next larger potency of 2
 		normSize:: Size -> Size
 		normSize inputSize = 2 ^ (  max (sizeHelp inputSize 0) min_size_log)
 		sizeHelp :: Size -> SizeLog -> SizeLog
-		sizeHelp s l = if s==0 then l else sizeHelp (shiftR s 1) (l+1)  
+		sizeHelp s l = if s==0 then l else sizeHelp (shiftR s 1) (l+1) --TODO fold this
+		newKvs :: Size -> IO(Kvs key val)
+		newKvs size = do let msk = getMask size
+			         slts <- newSlots size
+			         cntr <- newSlotsCounter
+			         return $ Kvs Nothing slts msk cntr
+		newSlots :: Size -> IO( Slots key val)
+		newSlots size = V.replicateM size newSlot --TODO
+		newSlotsCounter :: IO(SlotsCounter)
+		newSlotsCounter = newCounter 0
+		newSlot	:: IO(State key val)
+		newSlot = do keyref <- newIORef Kempty
+			     valref <- newIORef T     --TODO optimize somewhere, somewhat 
+			     return $ State keyref valref 
 		
 
 
