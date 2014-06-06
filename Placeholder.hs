@@ -29,8 +29,9 @@ module Data.HashTables.IO.Placeholder
 import GHC.IORef(IORef(IORef), readIORef, newIORef)
 import Data.Array.Unboxed(UArray)
 import Data.Hashable(Hashable, hash)
--- import Data.Array.IArray((!))
-import Data.Array.Unboxed((!), IArray)
+import Data.Array.IArray((!), IArray, Array)
+-- import Data.Array.Unboxed(UArray)
+-- import Data.Array.Unboxed((!), IArray)
 import Data.Bits((.&.), shiftR) 
 import Data.Atomics
 --todo restrict and qualify
@@ -76,7 +77,7 @@ type Size = Int
 type SizeLog = Int
 
 
-type Slots key val = UArray SlotsIndex (State key val) --TODO issue accessing the array generates a full copy, fix this latter 
+type Slots key val = Array SlotsIndex (State key val) --TODO issue accessing the array generates a full copy, fix this latter 
 
 data ConcurrentHashTable key val = ConcurrentHashTable {
 		--slots :: Slots key val --TODO, even if imutable it should be an IORef otherwise every handl to the hashmap will contain the whole array		
@@ -87,16 +88,15 @@ data ConcurrentHashTable key val = ConcurrentHashTable {
 
 -- does not terminate if array is full, and key is not in it
 -- TODO, use fitting hash function
---getSlot :: Hashable key => Slots key val -> Mask -> key -> State key val
---getSlot :: Hashable key => UArray SlotsIndex (State key val) -> Mask -> key -> State key val
---getSlot :: (Data.Array.Unboxed.IArray a e, Hashable key) =>  a SlotsIndex e -> Mask -> key -> e
---getSlot :: (Data.Array.Unboxed.IArray a Int, Hashable key) =>  a SlotsIndex Int -> Mask -> key -> Int
-getSlot :: forall key value a. (Data.Array.Unboxed.IArray a (State key value), Hashable key, Eq key) =>  a SlotsIndex (State key value) -> Mask -> key -> IO(State key value)
+
+getSlot :: forall key value . (Hashable key, Eq key) =>  
+           Slots key value -> Mask -> key -> IO(State key value)
 getSlot slots mask key =  do	--slot <- (return ( slots ! ( hsh key mask)))::IO(State key value) 
 				--oldkey <- (readKeySlot slot)::IO(Key key)
 				idx <- return $ hsh key mask
 				newkey <- (return $ K key)::IO(Key key)
-				--slot <- (if full oldkey newkey then return slot else return slot)::IO(State key value) --TODO apply collision treatment
+				--slot <- (if full oldkey newkey then return slot else return slot)::IO(State key value)
+                                  --TODO apply collision treatment
 				slot <- getSlt slots newkey idx mask
 --collision treatment has to be done again on a write should the key cas fail
 				return slot
@@ -108,11 +108,13 @@ getSlot slots mask key =  do	--slot <- (return ( slots ! ( hsh key mask)))::IO(S
 		      full  Kempty _ = False
 		      full  k1 k2 = not (keyComp k1 k2)
 		      --getSlt:: Slots key value -> Key key -> SlotsIndex -> Mask -> IO(State key value)--TODO fix type
-		      getSlt slots newkey idx mask = do
-							slot <- (return (slots !  idx))::IO(State key value)
-							oldkey <- (readKeySlot slot)::IO(Key key)
-							slot <- (if full oldkey newkey then getSlt slots newkey (collision idx mask) mask else return slot)::IO(State key value)
-							return slot --TODO count reprobes 
+		      getSlt slots newkey idx mask =
+                        do let slot = (slots ! idx) :: (State key value)
+                           oldkey <- (readKeySlot slot)::IO(Key key)
+                           slot <- (if full oldkey newkey
+                                    then getSlt slots newkey (collision idx mask) mask
+                                    else return slot) :: IO (State key value)
+                           return slot --TODO count reprobes 
 
 --new :: IO (ConcurrentHashTable a b)
 --new = return $ ConcurrentHashTable $ newIORef $ Nothing array $ (0 , min_size -1) --TODO
@@ -175,7 +177,7 @@ readKeySlot state = do
 readValueSlot:: State key value -> IO (Value value)
 readValueSlot state = do
 			readIORef ( value state  )
-
+--TODO various functions that operate on Stat and use primeops
 --TODO collision treatment	
 
 
@@ -274,31 +276,31 @@ put = undefined
 --TODO middle priority
 
 putIfAbsent :: ConcurrentHashTable key val -> key -> val -> IO()
-putIfAbsent = undefined
 --TODO middle priority
+putIfAbsent = undefined
 
 -- | Removes the key (and its corresponding value) from this map.
 removeKey :: ConcurrentHashTable key val -> key -> IO()
-removeKey = undefined
 --TODO middle priority
+removeKey = undefined
 
 -- | Removes key if matched.
 remove :: ConcurrentHashTable key val -> key -> val -> IO()
-remove = undefined
 --TODO middle priority
+remove = undefined
 
 replace :: ConcurrentHashTable key val -> key -> val -> IO()
-replace = undefined
 --TODO middle priority
+replace = undefined
 
 replaceTest :: ConcurrentHashTable key val -> key -> val -> IO(Bool)
-replaceTest = undefined
 --TODO middle priority
+replaceTest = undefined
 
 -- | Removes all of the mappings from this map.
 clear :: ConcurrentHashTable key val -> IO()
-clear = undefined
 --TODO low priority
+clear = undefined
 
 -- | Returns the value to which the specified key is mapped.
 get :: Hashable key => ConcurrentHashTable key val -> key ->  IO( Maybe val)
