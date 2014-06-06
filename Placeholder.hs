@@ -30,8 +30,6 @@ import GHC.IORef(IORef(IORef), readIORef, newIORef)
 import Data.Array.Unboxed(UArray)
 import Data.Hashable(Hashable, hash)
 import Data.Array.IArray((!), IArray, Array)
--- import Data.Array.Unboxed(UArray)
--- import Data.Array.Unboxed((!), IArray)
 import Data.Bits((.&.), shiftR) 
 import Data.Atomics
 --todo restrict and qualify
@@ -91,10 +89,10 @@ data ConcurrentHashTable key val = ConcurrentHashTable {
 
 getSlot :: forall key value . (Hashable key, Eq key) =>  
            Slots key value -> Mask -> key -> IO(State key value)
-getSlot slots mask key =  do	--slot <- (return ( slots ! ( hsh key mask)))::IO(State key value) 
+getSlot slots mask key =  do	let idx = hsh key mask
+                                    newkey = K key
+                                --slot <- (return ( slots ! ( hsh key mask)))::IO(State key value) 
 				--oldkey <- (readKeySlot slot)::IO(Key key)
-				idx <- return $ hsh key mask
-				newkey <- (return $ K key)::IO(Key key)
 				--slot <- (if full oldkey newkey then return slot else return slot)::IO(State key value)
                                   --TODO apply collision treatment
 				slot <- getSlt slots newkey idx mask
@@ -125,7 +123,8 @@ unwrapValue Tp = Nothing
 unwrapValue (V a) = Just a
 unwrapValue (Vp a) = Just a
 
-keyComp:: Eq key => Key key -> Key key -> Bool
+keyComp:: Eq key => 
+          Key key -> Key key -> Bool
 keyComp Kempty Kempty = True
 keyComp Kempty _      = False
 keyComp _     Kempty  = False
@@ -152,14 +151,15 @@ lookup table k = do
 --collision:: SlotsIndex -> Mask -> SlotsIndex
 
 --see get
-get_impl :: Hashable key => ConcurrentHashTable key val -> Kvs key val -> key -> FullHash -> IO(Value val)
-get_impl table kvs key fullhash = do
-				msk <- return $ mask kvs
-				slts <- return $ slots kvs
-				slt <- getSlot  slts msk key --TODO pass fullhash
-				k <- readKeySlot slt
-				v <- readValueSlot slt
-				if keyComp k ( K key) then return v else return T  --TODO use hash-caching for keycompare
+get_impl :: (Eq key, Hashable key) => 
+            ConcurrentHashTable key val -> Kvs key val -> key -> FullHash -> IO(Value val)
+get_impl table kvs key fullhash = do let msk = mask kvs
+                                         slts = slots kvs
+				     slt <- getSlot  slts msk key --TODO pass fullhash
+				     k <- readKeySlot slt
+				     v <- readValueSlot slt
+				     if keyComp k ( K key) then return v 
+                                     	else return T  --TODO use hash-caching for keycompare
 --TODO actually we could use IO(Maybe (Value val)) as return type
 				--TODO if key == key then return value otherwise return Value empty
 --TODO treat resize
@@ -171,12 +171,10 @@ get_impl table kvs key fullhash = do
 --------------------------------------------------------------------------------------------------------------------------------
 
 readKeySlot:: State key value -> IO (Key key)
-readKeySlot state = do
-			readIORef ( key state  )
+readKeySlot state = readIORef ( key state  )
 		
 readValueSlot:: State key value -> IO (Value value)
-readValueSlot state = do
-			readIORef ( value state  )
+readValueSlot state = readIORef ( value state  )
 --TODO various functions that operate on Stat and use primeops
 --TODO collision treatment	
 
@@ -192,7 +190,8 @@ casKeySlot (State ke va) old new = do
 				return returnvalue					
 
 --TODO, see casKeySlot
-casValueSlot :: forall key value. (State key value) -> Value value -> Value value -> IO ( Bool )
+casValueSlot :: forall key value.
+	        (State key value) -> Value value -> Value value -> IO ( Bool )
 casValueSlot (State ke va) old new = do
 				oldref <- (newIORef old)::IO(IORef (Value value))
 				newref <- (newIORef new)::IO(IORef (Value value))
@@ -214,12 +213,12 @@ casValueSlot (State ke va) old new = do
 putIfMatch :: forall key value. (Hashable key, Eq key, Eq value) =>
               Kvs key value -> Key key -> Value value -> Value value -> IO ()
 putIfMatch kvs key putVal expVal = do
+  let msk = mask kvs
+      slts = slots kvs
   reprobe_cnt <- return 0
-  return $ assert (keyComp key  Kempty) --TODO use eq
-  slots <- (return $ slots kvs)   ::IO(Slots key value)
-  mask  <- (return $ mask kvs)    ::IO(Mask)
-  K k   <- (return key)           ::IO(Key key)
-  slot  <- (getSlot slots mask k) ::IO(State key value) --FIXME Type problem
+  return $ assert (keyComp key  Kempty) --TODO use eq 
+  K k   <- (return key)           ::IO(Key key)  --TODO pune this better
+  slot  <- (getSlot slts msk k) ::IO(State key value) --FIXME Type problem
   --TODO if putvall TMBSTONE and oldkey == empty do nothing
   oldKey <-  readKeySlot slot
   if oldKey == Kempty
@@ -237,9 +236,8 @@ putIfMatch kvs key putVal expVal = do
 
 -- | Increments the counter of used slots in the array.
 incSlotsCounter :: Kvs key value -> IO ()
-incSlotsCounter kvs = do
-			counter <- return $ slotsCounter kvs
-			incrCounter_ 1 counter
+incSlotsCounter kvs = do let counter = slotsCounter kvs
+			 incrCounter_ 1 counter
 
 
 
@@ -260,7 +258,8 @@ isEmpty table = do
 
 
 -- | Tests if the key in the table
-containsKey :: (Eq val, Hashable key) => ConcurrentHashTable key val -> key -> IO(Bool)
+containsKey :: (Eq key, Eq val, Hashable key) =>
+	       ConcurrentHashTable key val -> key -> IO(Bool)
 containsKey table key = do
 			value <- get table key			
 			return $ not $ value == Nothing
@@ -303,12 +302,12 @@ clear :: ConcurrentHashTable key val -> IO()
 clear = undefined
 
 -- | Returns the value to which the specified key is mapped.
-get :: Hashable key => ConcurrentHashTable key val -> key ->  IO( Maybe val)
-get table key = do
-		topkvs <- readIORef $ kvs table
-		fullhash <- return $ hash key             --TODO use the right hashfunctio here
-		result <- get_impl table topkvs key fullhash
-		return $ unwrapValue result
+get :: (Eq key, Hashable key) => 
+       ConcurrentHashTable key val -> key ->  IO( Maybe val)
+get table key = do let fullhash = hash key --TODO use the right hashfunctio here
+		   topkvs <- readIORef $ kvs table            
+		   result <- get_impl table topkvs key fullhash
+		   return $ unwrapValue result
 
 
 -- | Create a new NonBlockingHashtable with default minimum size (currently set

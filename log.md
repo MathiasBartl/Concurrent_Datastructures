@@ -272,6 +272,11 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://stackoverflow.com/questions/1322510/given-an-integer-how-do-i-find-the-next-largest-power-of-two-using-bit-twiddlin
  - https://www.haskell.org/ghc/docs/7.8.2/html/libraries/base-4.7.0.0/Data-Bits.html
 
+# 06.06.2014
+ - http://hackage.haskell.org/package/vector
+ - http://hackage.haskell.org/package/vector-0.10.11.0/docs/Data-Vector.html
+   replicateM should serve to initialise the hashtable
+ - http://www.haskell.org/haskellwiki/Numeric_Haskell:_A_Vector_Tutorial
 reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
@@ -288,3 +293,4 @@ http://hackage.haskell.org/package/array-0.1.0.0/docs/Data-Array-MArray.html
 http://hackage.haskell.org/package/hashmap-1.0.0.2/docs/Data-HashMap.html
 http://www.haskell.org/haddock/doc/html/index.html
 https://help.github.com/articles/github-flavored-markdown
+http://www.haskell.org/haskellwiki/Numeric_Haskell:_A_Vector_Tutorial
