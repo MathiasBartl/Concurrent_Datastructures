@@ -265,6 +265,13 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://hackage.haskell.org/package/atomic-primops-0.6.0.5/docs/src/Data-Atomics-Counter.html
  - http://hackage.haskell.org/package/atomic-primops-0.6.0.5/docs/Data-Atomics-Counter-Unboxed.html
 
+# 05.06.2014
+
+ - http://pdos.csail.mit.edu/6.828/2012/readings/i386/BSR.htm
+ - http://stackoverflow.com/questions/466204/rounding-off-to-nearest-power-of-2
+ - http://stackoverflow.com/questions/1322510/given-an-integer-how-do-i-find-the-next-largest-power-of-two-using-bit-twiddlin
+ - https://www.haskell.org/ghc/docs/7.8.2/html/libraries/base-4.7.0.0/Data-Bits.html
+
 reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

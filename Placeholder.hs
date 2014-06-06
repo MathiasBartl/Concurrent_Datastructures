@@ -31,7 +31,7 @@ import Data.Array.Unboxed(UArray)
 import Data.Hashable(Hashable, hash)
 -- import Data.Array.IArray((!))
 import Data.Array.Unboxed((!), IArray)
-import Data.Bits((.&.)) 
+import Data.Bits((.&.), shiftR) 
 import Data.Atomics
 --todo restrict and qualify
 import Control.Exception(assert)
@@ -43,7 +43,7 @@ min_size_log = 3
 min_size = 2 ^ min_size_log --must be power of 2, compiler should turn this into a constant
 
 
-getMask:: Int -> Mask
+getMask:: SizeLog -> Mask
 getMask size = size -1 --if size_log == 1 then 1 else (getMask ( size_log -1) )* 2 + 1
 
 --data representation
@@ -69,9 +69,11 @@ data Kvs k v =   Kvs {
 
 type SlotsCounter = AtomicCounter
 
+type FullHash = SlotsIndex
 type SlotsIndex = Int
 type Mask = SlotsIndex
 type Size = Int
+type SizeLog = Int
 
 
 type Slots key val = UArray SlotsIndex (State key val) --TODO issue accessing the array generates a full copy, fix this latter 
@@ -115,7 +117,11 @@ getSlot slots mask key =  do	--slot <- (return ( slots ! ( hsh key mask)))::IO(S
 --new :: IO (ConcurrentHashTable a b)
 --new = return $ ConcurrentHashTable $ newIORef $ Nothing array $ (0 , min_size -1) --TODO
 
-
+unwrapValue :: Value val -> Maybe val
+unwrapValue T = Nothing
+unwrapValue Tp = Nothing
+unwrapValue (V a) = Just a
+unwrapValue (Vp a) = Just a
 
 keyComp:: Eq key => Key key -> Key key -> Bool
 keyComp Kempty Kempty = True
@@ -143,6 +149,25 @@ lookup table k = do
 --gets the next index for collision treatment
 --collision:: SlotsIndex -> Mask -> SlotsIndex
 
+--see get
+get_impl :: Hashable key => ConcurrentHashTable key val -> Kvs key val -> key -> FullHash -> IO(Value val)
+get_impl table kvs key fullhash = do
+				msk <- return $ mask kvs
+				slts <- return $ slots kvs
+				slt <- getSlot  slts msk key --TODO pass fullhash
+				k <- readKeySlot slt
+				v <- readValueSlot slt
+				if keyComp k ( K key) then return v else return T  --TODO use hash-caching for keycompare
+--TODO actually we could use IO(Maybe (Value val)) as return type
+				--TODO if key == key then return value otherwise return Value empty
+--TODO treat resize
+
+--TODO only pass reference to table if necessary
+--TODO fit get function with table resizing
+
+--Accessing the slot
+--------------------------------------------------------------------------------------------------------------------------------
+
 readKeySlot:: State key value -> IO (Key key)
 readKeySlot state = do
 			readIORef ( key state  )
@@ -150,7 +175,7 @@ readKeySlot state = do
 readValueSlot:: State key value -> IO (Value value)
 readValueSlot state = do
 			readIORef ( value state  )
---TODO various functions that operate on Stat and use primeops
+
 --TODO collision treatment	
 
 
@@ -175,6 +200,11 @@ casValueSlot (State ke va) old new = do
 				return returnvalue
 
 --setValueSlot :: forall key value. (State key value) -> Value value -> Value value -> IO ( Bool )
+
+
+
+
+-------------------------------------------------------------------------------------------------------------------------
 
 
 --TODO, do we need to pass the Hashtable as parameter?
@@ -203,60 +233,104 @@ putIfMatch kvs key putVal expVal = do
   return ()   
 
 
-
+-- | Increments the counter of used slots in the array.
 incSlotsCounter :: Kvs key value -> IO ()
 incSlotsCounter kvs = do
 			counter <- return $ slotsCounter kvs
 			incrCounter_ 1 counter
+
+
+
 
 --Exported functions
 -------------------------------------------------------------------------------------------------------------
 
 -- | Returns the number of key-value mappings in this map
 size :: ConcurrentHashTable key val -> IO(Size)
+size = undefined
 --TODO low priority
 
 
 isEmpty :: ConcurrentHashTable key val -> IO(Bool)
-isEmpty table = return $ (size table) == 0 
+isEmpty table = do
+		 s <- size table
+		 return $ s == 0 
 
 
 -- | Tests if the key in the table
-containsKey :: ConcurrentHashTable key val -> key -> IO(Bool)
-containsKey table key = return $ not $ (get key) == Nothing
+containsKey :: (Eq val, Hashable key) => ConcurrentHashTable key val -> key -> IO(Bool)
+containsKey table key = do
+			value <- get table key			
+			return $ not $ value == Nothing
 
 
 
 containsValue ::  ConcurrentHashTable key val -> val -> IO(Bool)
+containsValue = undefined
 --TODO low priority
 
 put :: ConcurrentHashTable key val -> key -> val -> IO()
+put = undefined
 --TODO middle priority
 
 putIfAbsent :: ConcurrentHashTable key val -> key -> val -> IO()
+putIfAbsent = undefined
 --TODO middle priority
 
 -- | Removes the key (and its corresponding value) from this map.
 removeKey :: ConcurrentHashTable key val -> key -> IO()
+removeKey = undefined
 --TODO middle priority
 
 -- | Removes key if matched.
 remove :: ConcurrentHashTable key val -> key -> val -> IO()
+remove = undefined
 --TODO middle priority
 
 replace :: ConcurrentHashTable key val -> key -> val -> IO()
+replace = undefined
 --TODO middle priority
 
 replaceTest :: ConcurrentHashTable key val -> key -> val -> IO(Bool)
+replaceTest = undefined
 --TODO middle priority
 
 -- | Removes all of the mappings from this map.
 clear :: ConcurrentHashTable key val -> IO()
+clear = undefined
 --TODO low priority
 
 -- | Returns the value to which the specified key is mapped.
-get :: ConcurrentHashTable key val -> key ->  IO( Maybe value)
---TODO High Priority
+get :: Hashable key => ConcurrentHashTable key val -> key ->  IO( Maybe val)
+get table key = do
+		topkvs <- readIORef $ kvs table
+		fullhash <- return $ hash key             --TODO use the right hashfunctio here
+		result <- get_impl table topkvs key fullhash
+		return $ unwrapValue result
 
---TODO add new for default and arbitrary size 
+
+-- | Create a new NonBlockingHashtable with default minimum size (currently set
+--    to 8 K/V pairs)
+newConcurrentHashTable :: ConcurrentHashTable key val
+newConcurrentHashTable = newConcurrentHashTableHint min_size
+
+-- |Create a new NonBlockingHashtable with initial room for the given number of
+-- elements, thus avoiding internal resizing operations to reach an
+-- appropriate size. Large numbers here when used with a small count of
+-- elements will sacrifice space for a small amount of time gained. The
+-- initial size will be rounded up internally to the next larger power of 2.
+newConcurrentHashTableHint :: Size -> ConcurrentHashTable key val
+newConcurrentHashTableHint = undefined
+--TODO medium priority
+--TODO throw error if size <0
+	where
+		-- Returns the next larger potency of 2
+		normSize:: Size -> Size
+		normSize inputSize = 2 ^ (  max (sizeHelp inputSize 0) min_size_log)
+		sizeHelp :: Size -> SizeLog -> SizeLog
+		sizeHelp s l = if s==0 then l else sizeHelp (shiftR s 1) (l+1)  
+		
+
+
+
 --TODO somehow represent NO_MATCH_OLD and MATCH_ANY for putIfMatch 
