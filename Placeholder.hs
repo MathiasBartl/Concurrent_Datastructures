@@ -26,10 +26,8 @@ module Data.HashTables.IO.Placeholder
 	)
 	where
 
-import GHC.IORef(IORef(IORef), readIORef, newIORef)
---import Data.Array.Unboxed(UArray)
+import GHC.IORef(IORef(IORef), readIORef, newIORef, writeIORef)
 import Data.Hashable(Hashable, hash)
---import Data.Array.IArray((!), IArray, Array)
 import Data.Bits((.&.), shiftR) 
 import Data.Atomics
 --todo restrict and qualify
@@ -63,11 +61,13 @@ data Kvs k v =   Kvs {
 	newkvs :: Maybe (IORef ( Kvs k v))
 	,slots :: Slots k v 
 	, mask :: Mask
-	, slotsCounter :: SlotsCounter 
+	, slotsCounter :: SlotsCounter
+	, sizeCounter :: SizeCounter 
 }
 
 
 type SlotsCounter = AtomicCounter
+type SizeCounter  = AtomicCounter
 
 type FullHash = SlotsIndex
 type SlotsIndex = Int
@@ -75,29 +75,25 @@ type Mask = SlotsIndex
 type Size = Int
 type SizeLog = Int
 
+data ValComparator = MATCH_ANY | NO_MATCH_OLD
 
---type Slots key val = Array SlotsIndex (State key val)
+type ValComp val = Either (Value val) ValComparator 
+
+
 type Slots key val = V.Vector (State key val)
 --TODO issue accessing the array generates a full copy, fix this latter 
 
-data ConcurrentHashTable key val = ConcurrentHashTable {
-		--slots :: Slots key val --TODO, even if imutable it should be an IORef otherwise every handl to the hashmap will contain the whole array		
+data ConcurrentHashTable key val = ConcurrentHashTable {	
 		  kvs :: IORef(Kvs key val)
-		--,mask :: Mask --TODO make this IORef, in any case since resizing there should be multipe masks
 }
 --------------------------------------------------------------------------------------------------------------------------------------------
 
 -- does not terminate if array is full, and key is not in it
 -- TODO, use fitting hash function
-
 getSlot :: forall key value . (Hashable key, Eq key) =>  
            Slots key value -> Mask -> key -> IO(State key value)
 getSlot slots mask key =  do	let idx = hsh key mask
-                                    newkey = K key
-                                --slot <- (return ( slots ! ( hsh key mask)))::IO(State key value) 
-				--oldkey <- (readKeySlot slot)::IO(Key key)
-				--slot <- (if full oldkey newkey then return slot else return slot)::IO(State key value)
-                                  --TODO apply collision treatment
+                                    newkey = K key 
 				slot <- getSlt slots newkey idx mask
 --collision treatment has to be done again on a write should the key cas fail
 				return slot
@@ -108,7 +104,7 @@ getSlot slots mask key =  do	let idx = hsh key mask
 		      full :: Key key -> Key key -> Bool
 		      full  Kempty _ = False
 		      full  k1 k2 = not (keyComp k1 k2)
-		      --getSlt:: Slots key value -> Key key -> SlotsIndex -> Mask -> IO(State key value)--TODO fix type
+		      getSlt:: Slots key value -> Key key -> SlotsIndex -> Mask -> IO(State key value)
 		      getSlt slots newkey idx mask =
                         do let slot = (slots V.! idx) :: (State key value)
                            oldkey <- (readKeySlot slot)::IO(Key key)
@@ -117,8 +113,6 @@ getSlot slots mask key =  do	let idx = hsh key mask
                                     else return slot) :: IO (State key value)
                            return slot --TODO count reprobes 
 
---new :: IO (ConcurrentHashTable a b)
---new = return $ ConcurrentHashTable $ newIORef $ Nothing array $ (0 , min_size -1) --TODO
 
 unwrapValue :: Value val -> Maybe val
 unwrapValue T = Nothing
@@ -131,8 +125,17 @@ keyComp:: Eq key =>
 keyComp Kempty Kempty = True
 keyComp Kempty _      = False
 keyComp _     Kempty  = False
-keyComp (K k1) (K k2) = k1 == k2 --TODO eqality on key waht about hashes
+keyComp (K k1) (K k2) = k1 == k2 --TODO eqality on key what about hashes
 
+
+isPrimedValue :: Value val -> Bool
+isPrimedValue Tp = True
+isPrimedValue (Vp _) = True
+isPrimedValue _ = False
+
+isPrimedValComp :: ValComp val -> Bool
+isPrimedValComp (Left v) = isPrimedValue v
+isPrimedValComp (Right _) = False
 
 {--
 lookup :: Hashable key => ConcurrentHashTable key val -> key -> IO ( Maybe val)
@@ -150,8 +153,6 @@ lookup table k = do
 --}
 
 
---gets the next index for collision treatment
---collision:: SlotsIndex -> Mask -> SlotsIndex
 
 --see get
 get_impl :: (Eq key, Hashable key) => 
@@ -164,7 +165,7 @@ get_impl table kvs key fullhash = do let msk = mask kvs
 				     if keyComp k ( K key) then return v 
                                      	else return T  --TODO use hash-caching for keycompare
 --TODO actually we could use IO(Maybe (Value val)) as return type
-				--TODO if key == key then return value otherwise return Value empty
+			
 --TODO treat resize
 
 --TODO only pass reference to table if necessary
@@ -178,8 +179,7 @@ readKeySlot state = readIORef ( key state  )
 		
 readValueSlot:: State key value -> IO (Value value)
 readValueSlot state = readIORef ( value state  )
---TODO various functions that operate on Stat and use primeops
---TODO collision treatment	
+	
 
 
 --TODO Question When are 2 Keys equal, and why does ticket not require a to be in class eq, how exactly does the COMPARE part work
@@ -210,18 +210,29 @@ casValueSlot (State ke va) old new = do
 
 -------------------------------------------------------------------------------------------------------------------------
 
+putIfMatch_T ::(Hashable key, Eq key, Eq value) =>
+               ConcurrentHashTable key value -> key -> Value value -> ValComp value -> IO ()
+putIfMatch_T table key putVal expVal = do let kvsref = kvs table
+                                              ky = K key
+                                          kv <- readIORef kvsref
+                                          putIfMatch kv ky putVal expVal                                   
+--TODO return oldvalue
+
 
 --TODO, do we need to pass the Hashtable as parameter?
 --TODO assert key is not empty, putval is no empty, but possibly a tombstone, key value are not primed 
 putIfMatch :: forall key value. (Hashable key, Eq key, Eq value) =>
-              Kvs key value -> Key key -> Value value -> Value value -> IO ()
+              Kvs key value -> Key key -> Value value -> ValComp value -> IO ()
 putIfMatch kvs key putVal expVal = do
   let msk = mask kvs
       slts = slots kvs
   reprobe_cnt <- return 0
-  return $ assert (keyComp key  Kempty) --TODO use eq 
+  return $ assert $ not $ keyComp key  Kempty --TODO use eq TODO this is not in the original
+  return $ assert $ not $ isPrimedValue putVal
+  return $ assert $ not $ isPrimedValComp expVal
+	 
   K k   <- (return key)           ::IO(Key key)  --TODO pune this better
-  slot  <- (getSlot slts msk k) ::IO(State key value) --FIXME Type problem
+  slot  <- (getSlot slts msk k) ::IO(State key value)
   --TODO if putvall TMBSTONE and oldkey == empty do nothing
   oldKey <-  readKeySlot slot
   if oldKey == Kempty
@@ -235,23 +246,46 @@ putIfMatch kvs key putVal expVal = do
 
 --TODO when would cas fail
   return ()   
+--TODO return oldvalue
 
 
+-- counter functions
+------------------------------------------------------------------------------------------------------------------------
 -- | Increments the counter of used slots in the array.
 incSlotsCounter :: Kvs key value -> IO ()
 incSlotsCounter kvs = do let counter = slotsCounter kvs
 			 incrCounter_ 1 counter
 
 
+incSizeCounter :: Kvs key value -> IO ()
+incSizeCounter kvs = do let counter = sizeCounter kvs
+			incrCounter_ 1 counter
+--TODO possibly parameter table
 
+decSizeCounter :: Kvs key value -> IO ()
+decSizeCounter kvs = do let counter = sizeCounter kvs
+			incrCounter_ (-1) counter
 
+readSlotsCounter :: Kvs key value -> IO Int
+readSlotsCounter kvs = do let counter = slotsCounter kvs
+                          readCounter counter
+
+readSizeCounter :: Kvs key value -> IO Int
+readSizeCounter kvs = do let counter = sizeCounter kvs
+                         readCounter counter
+
+newSizeCounter :: IO(SizeCounter) 
+newSizeCounter = newCounter 0
+--TODO possibly parameter table
 --Exported functions
 -------------------------------------------------------------------------------------------------------------
 
 -- | Returns the number of key-value mappings in this map
 size :: ConcurrentHashTable key val -> IO(Size)
-size = undefined
---TODO low priority
+size table = do let kvsref= kvs table
+		kvs <- readIORef kvsref
+		readSizeCounter kvs 
+
 
 
 isEmpty :: ConcurrentHashTable key val -> IO(Bool)
@@ -273,36 +307,60 @@ containsValue ::  ConcurrentHashTable key val -> val -> IO(Bool)
 containsValue = undefined
 --TODO low priority
 
-put :: ConcurrentHashTable key val -> key -> val -> IO()
-put = undefined
+put :: (Eq val,Eq key, Hashable key) => 
+       ConcurrentHashTable key val -> key -> val -> IO()
+put table key val = putIfMatch_T table key (V val) (Right NO_MATCH_OLD)
 --TODO middle priority
+--TODO return old value
 
-putIfAbsent :: ConcurrentHashTable key val -> key -> val -> IO()
+putIfAbsent :: (Eq val,Eq key, Hashable key) => 
+               ConcurrentHashTable key val -> key -> val -> IO()
 --TODO middle priority
-putIfAbsent = undefined
+putIfAbsent table key val = putIfMatch_T table key (V val) (Left T) --TODO is tombstone correct, what if there is a primed vaue 
+--TODO return old value
 
 -- | Removes the key (and its corresponding value) from this map.
-removeKey :: ConcurrentHashTable key val -> key -> IO()
+removeKey :: (Eq val, Eq key, Hashable key) =>
+             ConcurrentHashTable key val -> key -> IO()
 --TODO middle priority
-removeKey = undefined
+removeKey table key  = putIfMatch_T table key T (Right NO_MATCH_OLD)
+--TODO return removed value
 
 -- | Removes key if matched.
-remove :: ConcurrentHashTable key val -> key -> val -> IO()
+remove :: (Eq val, Eq key, Hashable key) =>
+          ConcurrentHashTable key val -> key -> val -> IO()
 --TODO middle priority
-remove = undefined
+remove table key val = putIfMatch_T table key T (Left (V val))
+--TODO return boolean
 
-replace :: ConcurrentHashTable key val -> key -> val -> IO()
+
+-- | do a put if the key is already mapped to some value
+replace :: (Eq val, Eq key, Hashable key) =>
+	   ConcurrentHashTable key val -> key -> val -> IO()
 --TODO middle priority
-replace = undefined
+replace table key val = putIfMatch_T table key (V val) (Right MATCH_ANY)
+--TODO return old value
 
-replaceTest :: ConcurrentHashTable key val -> key -> val -> IO(Bool)
+-- | do a put if the key is already mapped to the old value
+replaceTest :: (Eq val, Eq key, Hashable key) =>
+               ConcurrentHashTable key val -> key -> val -> val -> IO()
 --TODO middle priority
-replaceTest = undefined
+replaceTest table key newval oldval= putIfMatch_T table key (V newval) (Left (V oldval))
+--TODO return boolean
 
--- | Removes all of the mappings from this map.
+-- | Removes all of the mappings from this map, number of slots to min_size
 clear :: ConcurrentHashTable key val -> IO()
---TODO low priority
-clear = undefined
+clear table = clearHint table min_size 
+
+-- | Removes all of the mappings from this map, number of slots to next largest power of 2
+clearHint :: ConcurrentHashTable key val -> Size -> IO()
+clearHint table hint = do let size = normSize hint
+                              kvsref = kvs table
+		          szcntr <- newSizeCounter
+                          kvs <- newKvs size szcntr
+			  writeIORef kvsref kvs
+--TODO rewrite in case type of ConcurrentHashTable changes
+
 
 -- | Returns the value to which the specified key is mapped.
 get :: (Eq key, Hashable key) => 
@@ -325,21 +383,27 @@ newConcurrentHashTable = newConcurrentHashTableHint min_size
 -- initial size will be rounded up internally to the next larger power of 2.
 newConcurrentHashTableHint :: Size -> IO(ConcurrentHashTable key val)
 newConcurrentHashTableHint hint = do let size = normSize hint
-				     kvs <- newKvs size
+                                     szcntr <- newSizeCounter
+				     kvs <- newKvs size szcntr
 				     kvsref <- newIORef kvs
+
 				     return $ ConcurrentHashTable kvsref                                    
---TODO medium priority
 --TODO throw error if size <0
-	where	-- Returns the next larger potency of 2
-		normSize:: Size -> Size
-		normSize inputSize = 2 ^ (  max (sizeHelp inputSize 0) min_size_log)
+
+-- | Returns the next larger potency of 2
+normSize:: Size -> Size
+normSize inputSize = 2 ^ (  max (sizeHelp inputSize 0) min_size_log)
+	where
 		sizeHelp :: Size -> SizeLog -> SizeLog
 		sizeHelp s l = if s==0 then l else sizeHelp (shiftR s 1) (l+1) --TODO fold this
-		newKvs :: Size -> IO(Kvs key val)
-		newKvs size = do let msk = getMask size
-			         slts <- newSlots size
-			         cntr <- newSlotsCounter
-			         return $ Kvs Nothing slts msk cntr
+
+--size has to be power of 2
+newKvs :: Size -> SizeCounter-> IO(Kvs key val)
+newKvs size  counter = do let msk = getMask size
+		          slts <- newSlots size
+	                  sltcntr <- newSlotsCounter
+	                  return $ Kvs Nothing slts msk sltcntr counter
+	where
 		newSlots :: Size -> IO( Slots key val)
 		newSlots size = V.replicateM size newSlot --TODO
 		newSlotsCounter :: IO(SlotsCounter)
@@ -352,4 +416,4 @@ newConcurrentHashTableHint hint = do let size = normSize hint
 
 
 
---TODO somehow represent NO_MATCH_OLD and MATCH_ANY for putIfMatch 
+
