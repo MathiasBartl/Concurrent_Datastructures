@@ -34,6 +34,7 @@ import Data.Atomics
 import Control.Exception(assert)
 import Data.Atomics.Counter
 import qualified Data.Vector as V
+import Data.Maybe (isJust, fromJust)
 
 
 
@@ -47,9 +48,9 @@ getMask size = size -1
 --data representation
 ---------------------------------------------------------------------------------------------------------------------------------
 -- Kempty : empty, K : neverchanging key
-data Key key = Kempty | K key deriving (Eq) --TODO make instance of Eq 
--- T : empty, tombstone, Tp : tombstone primed, V : value, Vp : value primed
-data Value value =  T | Tp |V value | Vp value deriving (Eq) --TODO what kind of comparision is used
+data Key key = Kempty | K key deriving (Eq) --TODO make instance of Eq --TODO do keys need to be primed
+-- T : empty, tombstone, Tp : tombstone primed, V : value, Vp : value primed --TODO need tobstoes to be primed
+data Value value =  T | Tp |V value | Vp value | S deriving (Eq) --TODO what kind of comparision is used
 
 data State k v =   State {
 				key :: IORef (Key k)
@@ -75,6 +76,8 @@ type Mask = SlotsIndex
 type Size = Int
 type SizeLog = Int
 
+type ReprobeCounter = Int
+
 data ValComparator = MATCH_ANY | NO_MATCH_OLD
 
 type ValComp val = Either (Value val) ValComparator 
@@ -99,8 +102,6 @@ getSlot slots mask key =  do	let idx = hsh key mask
 				return slot
 		where hsh :: (Hashable key) => key -> Mask -> SlotsIndex
 		      hsh k m = (hash k)  .&. m
-		      collision :: SlotsIndex -> Mask -> SlotsIndex
-		      collision idx mask = (idx +1) .&. mask
 		      full :: Key key -> Key key -> Bool
 		      full  Kempty _ = False
 		      full  k1 k2 = not (keyComp k1 k2)
@@ -113,6 +114,8 @@ getSlot slots mask key =  do	let idx = hsh key mask
                                     else return slot) :: IO (State key value)
                            return slot --TODO count reprobes 
 
+collision :: SlotsIndex -> Mask -> SlotsIndex
+collision idx mask = (idx +1) .&. mask
 
 unwrapValue :: Value val -> Maybe val
 unwrapValue T = Nothing
@@ -120,12 +123,26 @@ unwrapValue Tp = Nothing
 unwrapValue (V a) = Just a
 unwrapValue (Vp a) = Just a
 
+--compares keys
 keyComp:: Eq key => 
           Key key -> Key key -> Bool
 keyComp Kempty Kempty = True
 keyComp Kempty _      = False
 keyComp _     Kempty  = False
 keyComp (K k1) (K k2) = k1 == k2 --TODO eqality on key what about hashes
+--TODO does not cover primed keys
+
+
+--compares the key in a slot with another key
+keyCompSlot:: Eq key => 
+          State key val-> Key key -> IO Bool
+keyCompSlot slot key = do slotkey <- readKeySlot slot
+		          return $ keyComp slotkey key
+
+--for use by 
+valCompComp :: Eq val =>
+               ValComp val -> Value val -> Bool
+valCompComp = undefined
 
 
 isPrimedValue :: Value val -> Bool
@@ -136,6 +153,10 @@ isPrimedValue _ = False
 isPrimedValComp :: ValComp val -> Bool
 isPrimedValComp (Left v) = isPrimedValue v
 isPrimedValComp (Right _) = False
+
+isSentinel :: Value val -> Bool
+isSentinel S = True
+isSentinel _ = False
 
 {--
 lookup :: Hashable key => ConcurrentHashTable key val -> key -> IO ( Maybe val)
@@ -162,12 +183,17 @@ get_impl table kvs key fullhash = do let msk = mask kvs
 				     slt <- getSlot  slts msk key --TODO pass fullhash
 				     k <- readKeySlot slt
 				     v <- readValueSlot slt
-				     if keyComp k ( K key) then return v 
+				     if keyComp k ( K key) --TODO are there primed keys
+                                        then if isSentinel v  
+						then do return $ assert $ hasNextKvs kvs 
+							newkvs <- getNextKvs kvs
+							get_impl table newkvs key fullhash --look in resized table
+						else return v 
                                      	else return T  --TODO use hash-caching for keycompare
 --TODO actually we could use IO(Maybe (Value val)) as return type
-			
+--TODO attention may return a primed value			
 --TODO treat resize
-
+--TODO count reprobes
 --TODO only pass reference to table if necessary
 --TODO fit get function with table resizing
 
@@ -224,31 +250,67 @@ putIfMatch_T table key putVal expVal = do let kvsref = kvs table
 putIfMatch :: forall key value. (Hashable key, Eq key, Eq value) =>
               Kvs key value -> Key key -> Value value -> ValComp value -> IO ()
 putIfMatch kvs key putVal expVal = do
-  let msk = mask kvs
+  let msk = mask kvs :: Mask
       slts = slots kvs
+      fullhash = hash k :: FullHash
+      K k = key
   reprobe_cnt <- return 0
   return $ assert $ not $ keyComp key  Kempty --TODO use eq TODO this is not in the original
   return $ assert $ not $ isPrimedValue putVal
   return $ assert $ not $ isPrimedValComp expVal
-	 
-  K k   <- (return key)           ::IO(Key key)  --TODO pune this better
   slot  <- (getSlot slts msk k) ::IO(State key value)
   --TODO if putvall TMBSTONE and oldkey == empty do nothing
   oldKey <-  readKeySlot slot
   if oldKey == Kempty
     then (if putVal == T
-          then return() {-TODO break writing value unnecessary -}
+          then return() {-TODO break writing value unnecessary -} --TODO put this test at the beginning
           else (do b <- undefined -- casKeySlot slot oldKey key
                    if b
                    then return (){- TODO write value, increase slot counter -}
                    else return (){- TODO reprobe-}) )
     else return () {- TODO test if it is the same key then either reprobe, or write value  -} 
-
 --TODO when would cas fail
   return ()   
 --TODO return oldvalue
+     where helper :: Slots key val -> Mask -> key -> FullHash -> Value val -> ValComp val ->
+	             SlotsIndex -> ReprobeCounter -> IO(Value val)
+           helper slts msk key hsh newval compval idx reprobectr = do let slt = slts V.! idx
+					                                  rekcall = helper slts msk key hsh newval compval
+				                                      keyfits <- helper2 slt
+				                                      if keyfits 
+					                                then
+					                                  setval slt newval compval
+                                                                        else rekcall (collision idx msk)
+											 (reprobectr +1)					
+				-- checks if the key in slt fits or puts the newkey there if thers an empts
+				where helper2 :: State key val -> IO Bool
+				      helper2 slt = do wasEmpty <- casKeySlot slt Kempty (K key)
+						       if wasEmpty then incSlotsCntr else return () 
+--TODO doing a simple check before the expensive cas should not be harmfull, because of the monotonic nature of keys
+						       if wasEmpty then return True else --TODO inc slots counter, inc size counter, except putvalue is a tombstone
+--then ony slotscounter, or do the inc of size counter in the seval
+							 keyCompSlot slt (K key) --simple key compare, TODO use fullhash
+					--set the value, return old value
+				      setval :: State key val -> Value val -> ValComp val -> IO(Value val)
+		       		      setval = undefined --TODO
+				      --TODO if T to Value inc size counter, if V to T or S dec size counter
+				      opSizeCntr :: Value val -> Value val -> IO()
+				      --opSizeCntr old new
+				      opSizeCntr T (V _) =incSizeCounter kvs
+				      opSizeCntr T (Vp _) = incSizeCounter kvs
+				      opSizeCntr T S = return ()
+				      opSizeCntr (V _) (Vp _) = return ()
+				      opSizeCntr (V _ )(V _) = return ()
+				      opSizeCntr (Vp _) T =  decSizeCounter kvs
+				      opSizeCntr (V _ ) T =  decSizeCounter kvs
+				      opSizeCntr (V _)  S =  decSizeCounter kvs				
+				      --TODO check witch changes are possible and witch arnt
+				      --TODO save sizecntr operationd on resize
 
+				      incSlotsCntr :: IO()
+				      incSlotsCntr = incSlotsCounter kvs
 
+--TODO add reprobe count			
 -- counter functions
 ------------------------------------------------------------------------------------------------------------------------
 -- | Increments the counter of used slots in the array.
@@ -278,6 +340,23 @@ newSizeCounter :: IO(SizeCounter)
 newSizeCounter = newCounter 0
 --TODO possibly parameter table
 --Exported functions
+
+--helper to acess first kvs
+getHeadKvs :: ConcurrentHashTable key val -> IO(Kvs key val)
+getHeadKvs table = do let kvsref= kvs table
+		      readIORef kvsref
+
+--gets then new resizedtable, throws error if does not exist
+getNextKvs :: Kvs key val -> IO(Kvs key val)
+getNextKvs kv = do let nwkvs = fromJust $ newkvs kv  --throws error
+		   readIORef nwkvs 	  
+--TODO change if structure of kvs changes
+
+--Is a resize in progress?
+hasNextKvs :: Kvs key val -> Bool
+hasNextKvs kv =  isJust (newkvs kv )
+
+--TODO possibly change return type to IO BOOL
 -------------------------------------------------------------------------------------------------------------
 
 -- | Returns the number of key-value mappings in this map
@@ -304,8 +383,24 @@ containsKey table key = do
 
 
 containsValue ::  ConcurrentHashTable key val -> val -> IO(Bool)
-containsValue = undefined
+containsValue table val = do let kvsref = kvs table
+			     kv <- readIORef kvsref
+			     containsVal kv (V val)
 --TODO low priority
+--TODO adopt if changes to data representation
+
+containsVal :: Kvs key val -> Value val -> IO(Bool)
+containsVal kvs val = do let slts = slots kvs
+                         anyM (pred val) slts
+			where
+			pred :: Value val -> State key val -> IO(Bool)
+			pred val slot = undefined --TODO possibly check if key is set (linearistion point for get is key AND value set)
+			anyM :: Monad m => (a -> m Bool) -> V.Vector a -> m Bool
+			anyM = undefined
+
+--TODO adopt to resizing, (by recursivly calling for newkvs) anyway what about primed, I should read that up
+--TODO for this the linearisation point for inputing would be the cas on value even if the cas on key has not be done yet, actually its better to think about this for a while, maybe not export this function for a while
+--TODO write an monadic any
 
 put :: (Eq val,Eq key, Hashable key) => 
        ConcurrentHashTable key val -> key -> val -> IO()
