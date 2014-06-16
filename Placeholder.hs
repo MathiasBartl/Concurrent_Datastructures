@@ -78,6 +78,8 @@ type SizeLog = Int
 
 type ReprobeCounter = Int
 
+newReprobeCounter = 0
+
 data ValComparator = MATCH_ANY | NO_MATCH_OLD
 
 type ValComp val = Either (Value val) ValComparator 
@@ -117,11 +119,15 @@ getSlot slots mask key =  do	let idx = hsh key mask
 collision :: SlotsIndex -> Mask -> SlotsIndex
 collision idx mask = (idx +1) .&. mask
 
+maskHash :: Mask -> FullHash -> SlotsIndex
+maskHash mask hsh = hsh .&. mask
+
 unwrapValue :: Value val -> Maybe val
 unwrapValue T = Nothing
 unwrapValue Tp = Nothing
 unwrapValue (V a) = Just a
 unwrapValue (Vp a) = Just a
+--TODO what if Sentinel
 
 --compares keys
 keyComp:: Eq key => 
@@ -142,8 +148,20 @@ keyCompSlot slot key = do slotkey <- readKeySlot slot
 --for use by 
 valCompComp :: Eq val =>
                ValComp val -> Value val -> Bool
-valCompComp = undefined
+valCompComp  (Left v1) v2 = valComp v1 v2
+valCompComp  (Right MATCH_ANY) _ = True
+--TODO does comparision with NO_MATCH_OLD fit
 
+
+valComp :: Eq val => Value val -> Value val -> Bool
+valComp (V a) (V b)= a == b
+valComp T T = True
+valComp T _ = False
+valComp _ T = False
+valComp S S = True
+valComp S _ = False
+valComp _ S = False
+--TODO primed values
 
 isPrimedValue :: Value val -> Bool
 isPrimedValue Tp = True
@@ -207,7 +225,7 @@ readValueSlot:: State key value -> IO (Value value)
 readValueSlot state = readIORef ( value state  )
 	
 
-
+--TODO compare means pointer equality, so get this fixed
 --TODO Question When are 2 Keys equal, and why does ticket not require a to be in class eq, how exactly does the COMPARE part work
 casKeySlot :: forall key value. (State key value) -> Key key -> Key key -> IO ( Bool )
 casKeySlot (State ke va) old new = do
@@ -237,24 +255,25 @@ casValueSlot (State ke va) old new = do
 -------------------------------------------------------------------------------------------------------------------------
 
 putIfMatch_T ::(Hashable key, Eq key, Eq value) =>
-               ConcurrentHashTable key value -> key -> Value value -> ValComp value -> IO ()
+               ConcurrentHashTable key value -> key -> Value value -> ValComp value -> IO ( Value value)
 putIfMatch_T table key putVal expVal = do let kvsref = kvs table
                                               ky = K key
                                           kv <- readIORef kvsref
                                           putIfMatch kv ky putVal expVal                                   
---TODO return oldvalue
+
 
 
 --TODO, do we need to pass the Hashtable as parameter?
 --TODO assert key is not empty, putval is no empty, but possibly a tombstone, key value are not primed 
 putIfMatch :: forall key value. (Hashable key, Eq key, Eq value) =>
-              Kvs key value -> Key key -> Value value -> ValComp value -> IO ()
+              Kvs key value -> Key key -> Value value -> ValComp value -> IO (Value value)
 putIfMatch kvs key putVal expVal = do
   let msk = mask kvs :: Mask
       slts = slots kvs
       fullhash = hash k :: FullHash
       K k = key
-  reprobe_cnt <- return 0
+      idx = maskHash msk fullhash ::SlotsIndex
+  --reprobe_cnt <- return 0
   return $ assert $ not $ keyComp key  Kempty --TODO use eq TODO this is not in the original
   return $ assert $ not $ isPrimedValue putVal
   return $ assert $ not $ isPrimedValComp expVal
@@ -262,16 +281,11 @@ putIfMatch kvs key putVal expVal = do
   --TODO if putvall TMBSTONE and oldkey == empty do nothing
   oldKey <-  readKeySlot slot
   if oldKey == Kempty
-    then (if putVal == T
-          then return() {-TODO break writing value unnecessary -} --TODO put this test at the beginning
-          else (do b <- undefined -- casKeySlot slot oldKey key
-                   if b
-                   then return (){- TODO write value, increase slot counter -}
-                   else return (){- TODO reprobe-}) )
-    else return () {- TODO test if it is the same key then either reprobe, or write value  -} 
+    then if (putVal == T)
+         then return T {-TODO break writing value unnecessary -} --TODO put this test at the beginning
+         else helper slts msk k fullhash putVal expVal idx newReprobeCounter
+    else helper slts msk k fullhash putVal expVal idx newReprobeCounter  
 --TODO when would cas fail
-  return ()   
---TODO return oldvalue
      where helper :: Slots key val -> Mask -> key -> FullHash -> Value val -> ValComp val ->
 	             SlotsIndex -> ReprobeCounter -> IO(Value val)
            helper slts msk key hsh newval compval idx reprobectr = do let slt = slts V.! idx
@@ -396,52 +410,45 @@ containsVal kvs val = do let slts = slots kvs
 			pred :: Value val -> State key val -> IO(Bool)
 			pred val slot = undefined --TODO possibly check if key is set (linearistion point for get is key AND value set)
 			anyM :: Monad m => (a -> m Bool) -> V.Vector a -> m Bool
-			anyM = undefined
-
+			anyM = \f -> \v ->   V.foldM' (\a -> \b -> undefined) False v --TODO
 --TODO adopt to resizing, (by recursivly calling for newkvs) anyway what about primed, I should read that up
 --TODO for this the linearisation point for inputing would be the cas on value even if the cas on key has not be done yet, actually its better to think about this for a while, maybe not export this function for a while
 --TODO write an monadic any
 
 put :: (Eq val,Eq key, Hashable key) => 
-       ConcurrentHashTable key val -> key -> val -> IO()
-put table key val = putIfMatch_T table key (V val) (Right NO_MATCH_OLD)
---TODO middle priority
---TODO return old value
+       ConcurrentHashTable key val -> key -> val -> IO( Maybe val)
+put table key val = do old <- putIfMatch_T table key (V val) (Right NO_MATCH_OLD)
+                       return $ unwrapValue old
 
 putIfAbsent :: (Eq val,Eq key, Hashable key) => 
-               ConcurrentHashTable key val -> key -> val -> IO()
---TODO middle priority
-putIfAbsent table key val = putIfMatch_T table key (V val) (Left T) --TODO is tombstone correct, what if there is a primed vaue 
---TODO return old value
+               ConcurrentHashTable key val -> key -> val -> IO( Maybe val)
+putIfAbsent table key val = do old <- putIfMatch_T table key (V val) (Left T) --TODO is tombstone correct, what if there is a primed vaue 
+			       return $ unwrapValue old
 
 -- | Removes the key (and its corresponding value) from this map.
 removeKey :: (Eq val, Eq key, Hashable key) =>
-             ConcurrentHashTable key val -> key -> IO()
---TODO middle priority
-removeKey table key  = putIfMatch_T table key T (Right NO_MATCH_OLD)
---TODO return removed value
+             ConcurrentHashTable key val -> key -> IO( Maybe val)
+removeKey table key  = do old <- putIfMatch_T table key T (Right NO_MATCH_OLD)
+		          return $ unwrapValue old
 
 -- | Removes key if matched.
 remove :: (Eq val, Eq key, Hashable key) =>
-          ConcurrentHashTable key val -> key -> val -> IO()
---TODO middle priority
-remove table key val = putIfMatch_T table key T (Left (V val))
---TODO return boolean
+          ConcurrentHashTable key val -> key -> val -> IO( Bool)
+remove table key val = do old <- putIfMatch_T table key T (Left (V val))
+                          return $  (unwrapValue old) == Just val  
 
 
 -- | do a put if the key is already mapped to some value
 replace :: (Eq val, Eq key, Hashable key) =>
-	   ConcurrentHashTable key val -> key -> val -> IO()
---TODO middle priority
-replace table key val = putIfMatch_T table key (V val) (Right MATCH_ANY)
---TODO return old value
+	   ConcurrentHashTable key val -> key -> val -> IO( Maybe val)
+replace table key val = do old <- putIfMatch_T table key (V val) (Right MATCH_ANY)
+                           return $ unwrapValue old
 
 -- | do a put if the key is already mapped to the old value
 replaceTest :: (Eq val, Eq key, Hashable key) =>
-               ConcurrentHashTable key val -> key -> val -> val -> IO()
---TODO middle priority
-replaceTest table key newval oldval= putIfMatch_T table key (V newval) (Left (V oldval))
---TODO return boolean
+               ConcurrentHashTable key val -> key -> val -> val -> IO(Bool)
+replaceTest table key newval oldval= do old <- putIfMatch_T table key (V newval) (Left (V oldval))
+                                        return $  (unwrapValue old) == Just oldval 
 
 -- | Removes all of the mappings from this map, number of slots to min_size
 clear :: ConcurrentHashTable key val -> IO()

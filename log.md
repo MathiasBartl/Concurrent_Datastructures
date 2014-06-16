@@ -279,6 +279,20 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://www.haskell.org/haskellwiki/Numeric_Haskell:_A_Vector_Tutorial
    2.3.5 Filling with a monadic action
 
+# 13.06.2014
+
+ - http://coldwa.st/e/blog/2013-08-20-Cabal-sandbox.html
+ - https://github.com/rrnewton/concurrent-skiplist/blob/master/.jenkins_script.sh
+ - https://github.com/rrnewton/concurrent-skiplist/blob/master/concurrent-skiplist/concurrent-skiplist.cabal
+ - https://github.com/rrnewton/concurrent-skiplist/blob/master/concurrent-skiplist/Data/Concurrent/Internal/Reagent.hs
+ - http://www.mpi-sws.org/~turon/reagents.pdf
+ - https://github.com/rrnewton/concurrent-skiplist/blob/master/concurrent-skiplist/Data/Concurrent/Map/Class.hs
+ - https://github.com/rrnewton/concurrent-skiplist/blob/master/concurrent-skiplist/Data/Concurrent/Map/Tests.hs
+ - http://hackage.haskell.org/package/HUnit-1.2.5.2/docs/Test-HUnit.html
+
+# 14.06.2014
+
+ - https://github.com/rrnewton/concurrent-skiplist/blob/master/concurrent-skiplist/Data/Concurrent/LinkedMap.hs
 
 reading list:
 
@@ -297,3 +311,4 @@ http://hackage.haskell.org/package/hashmap-1.0.0.2/docs/Data-HashMap.html
 http://www.haskell.org/haddock/doc/html/index.html
 https://help.github.com/articles/github-flavored-markdown
 http://www.haskell.org/haskellwiki/Numeric_Haskell:_A_Vector_Tutorial
+http://www.mpi-sws.org/~turon/reagents.pdf
