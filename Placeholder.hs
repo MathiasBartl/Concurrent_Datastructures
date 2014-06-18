@@ -21,9 +21,11 @@
 
 
 
-module Data.HashTables.IO.Placeholder 
+--module Data.HashTables.IO.Placeholder
+module Placeholder 
 	( ConcurrentHashTable, size, isEmpty, containsKey, containsValue, put, putIfAbsent, removeKey, remove, replace , replaceTest, clear, get 
-	)
+	, newConcurrentHashTableHint, newConcurrentHashTable)
+
 	where
 
 import GHC.IORef(IORef(IORef), readIORef, newIORef, writeIORef)
@@ -35,6 +37,7 @@ import Control.Exception(assert)
 import Data.Atomics.Counter
 import qualified Data.Vector as V
 import Data.Maybe (isJust, fromJust)
+import Data.Either.Unwrap (fromLeft, isLeft, isRight, fromRight)
 
 
 
@@ -80,7 +83,7 @@ type ReprobeCounter = Int
 
 newReprobeCounter = 0
 
-data ValComparator = MATCH_ANY | NO_MATCH_OLD
+data ValComparator = MATCH_ANY | NO_MATCH_OLD deriving Eq
 
 type ValComp val = Either (Value val) ValComparator 
 
@@ -306,7 +309,17 @@ putIfMatch kvs key putVal expVal = do
 							 keyCompSlot slt (K key) --simple key compare, TODO use fullhash
 					--set the value, return old value
 				      setval :: State key val -> Value val -> ValComp val -> IO(Value val)
-		       		      setval = undefined --TODO
+		       		      setval slt newval oldvalcmp = if isRight oldvalcmp then if (fromRight oldvalcmp) ==  MATCH_ANY then match_any slt newval
+						else no_match_old slt newval 
+					        else match slt newval (fromLeft oldvalcmp)
+					where match_any :: State key val -> Value val -> IO(Value val)
+					      match_any slt newval = undefined
+					      no_match_old :: State key val -> Value val -> IO(Value val)
+					      no_match_old slt newval = undefined
+					      match :: State key val -> Value val -> Value val-> IO(Value val)
+					      match slt newval oldval = do success <- casValueSlot slt oldval newval
+                                                                           return undefined --TODO return old value
+						--TODO, do we need a cas here
 				      --TODO if T to Value inc size counter, if V to T or S dec size counter
 				      opSizeCntr :: Value val -> Value val -> IO()
 				      --opSizeCntr old new

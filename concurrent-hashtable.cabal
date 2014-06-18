@@ -1,0 +1,33 @@
+Name: concurrent-hashtable
+Version: 0.0.0.1
+License: GPL3
+License-file: LICENSE
+Author: Mathias Otto Bartl
+Maintainer: mathiasbartl@web.de
+Category: Data
+Build-type: Simple
+Cabal-version: >= 1.8
+
+Homepage: https://github.com/MathiasBartl/Concurrent_Datastructures
+Bug-Reports: https://github.com/MathiasBartl/Concurrent_Datastructures/issues
+
+Synopsis: A lockfree, waitfree concurrent hashtable.
+
+Description:
+
+  A lockfree, waitfree concurrent hashtable.
+  .
+
+
+Library
+  exposed-modules: Placeholder
+  build-depends: atomic-primops >= 0.6.0.5, hashable >= 1.2.2.0
+  extensions: CPP
+  ghc-options: -O2
+
+Source-Repository head
+    Type: git
+    Location: git://github.com/MathiasBartl/Concurrent_Datastructures.git
+
+
+
