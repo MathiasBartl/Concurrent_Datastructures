@@ -294,6 +294,11 @@ very easy to understand, as long as you ignore the informal descriptions
 
  - https://github.com/rrnewton/concurrent-skiplist/blob/master/concurrent-skiplist/Data/Concurrent/LinkedMap.hs
 
+# 19.06.2014
+ - http://hunit.sourceforge.net/HUnit-1.0/Guide.html
+ - http://www.haskell.org/cabal/users-guide/developing-packages.html#test-suites
+ - 
+
 reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

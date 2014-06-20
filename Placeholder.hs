@@ -179,6 +179,12 @@ isSentinel :: Value val -> Bool
 isSentinel S = True
 isSentinel _ = False
 
+isTombstone :: Value val -> Bool
+isTombstone T = True
+isTombstone _ = False
+
+--TODO what if primed Tombstone
+
 {--
 lookup :: Hashable key => ConcurrentHashTable key val -> key -> IO ( Maybe val)
 lookup table k = do
@@ -267,9 +273,10 @@ putIfMatch_T table key putVal expVal = do let kvsref = kvs table
 
 
 --TODO, do we need to pass the Hashtable as parameter?
+--TODO use only by acessor functions, not by resizing algorithm
 --TODO assert key is not empty, putval is no empty, but possibly a tombstone, key value are not primed 
-putIfMatch :: forall key value. (Hashable key, Eq key, Eq value) =>
-              Kvs key value -> Key key -> Value value -> ValComp value -> IO (Value value)
+putIfMatch :: forall key val. (Hashable key, Eq key, Eq val) =>
+              Kvs key val -> Key key -> Value val -> ValComp val -> IO (Value val)
 putIfMatch kvs key putVal expVal = do
   let msk = mask kvs :: Mask
       slts = slots kvs
@@ -280,7 +287,7 @@ putIfMatch kvs key putVal expVal = do
   return $ assert $ not $ keyComp key  Kempty --TODO use eq TODO this is not in the original
   return $ assert $ not $ isPrimedValue putVal
   return $ assert $ not $ isPrimedValComp expVal
-  slot  <- (getSlot slts msk k) ::IO(State key value)
+  slot  <- (getSlot slts msk k) ::IO(State key val)
   --TODO if putvall TMBSTONE and oldkey == empty do nothing
   oldKey <-  readKeySlot slot
   if oldKey == Kempty
@@ -293,10 +300,14 @@ putIfMatch kvs key putVal expVal = do
 	             SlotsIndex -> ReprobeCounter -> IO(Value val)
            helper slts msk key hsh newval compval idx reprobectr = do let slt = slts V.! idx
 					                                  rekcall = helper slts msk key hsh newval compval
+								--TODO check if Slot is Kempty and compval==match any, then break and return T
 				                                      keyfits <- helper2 slt
 				                                      if keyfits 
 					                                then
-					                                  setval slt newval compval
+					                                  do ret <- setval slt newval compval
+									     if valCompComp compval ret then --FIXME expensive comparision
+										opSizeCntr ret newval else return ()
+									     return ret
                                                                         else rekcall (collision idx msk)
 											 (reprobectr +1)					
 				-- checks if the key in slt fits or puts the newkey there if thers an empts
@@ -312,10 +323,20 @@ putIfMatch kvs key putVal expVal = do
 		       		      setval slt newval oldvalcmp = if isRight oldvalcmp then if (fromRight oldvalcmp) ==  MATCH_ANY then match_any slt newval
 						else no_match_old slt newval 
 					        else match slt newval (fromLeft oldvalcmp)
+--TODO is there any backoff in cliff clicks algorithm
 					where match_any :: State key val -> Value val -> IO(Value val)
-					      match_any slt newval = undefined
+					      match_any slt newval = do oldval <- readValueSlot slt
+									if isTombstone oldval then return oldval else --is that actually ok if not done in order
+										do casValueSlot slt oldval newval
+										   ret <- undefined --TODO cas return oldvalue
+										   if ret == oldval then return ret else match_any slt newval
 					      no_match_old :: State key val -> Value val -> IO(Value val)
-					      no_match_old slt newval = undefined
+					      no_match_old slt newval = do oldval <- readValueSlot slt --TODO do I actually need to do a cas here
+									   if valComp oldval newval then return oldval else
+										do casValueSlot slt oldval newval
+										   ret <-  undefined
+										   if ret == oldval then return ret else no_match_old slt newval 
+											--FIXME control if cas has been sucessfull should not require an expensive equality comparision on values
 					      match :: State key val -> Value val -> Value val-> IO(Value val)
 					      match slt newval oldval = do success <- casValueSlot slt oldval newval
                                                                            return undefined --TODO return old value
