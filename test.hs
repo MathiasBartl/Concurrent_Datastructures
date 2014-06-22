@@ -83,6 +83,10 @@ ht1 = do
   return $ assertBool  "Hashtable holds 1 Element" (1 == sze)
   ret <- (HT.get ht 10)::IO(Maybe Int)
   return $ assertBool  "Basic put and get" (ret == Just 10)
+  cnts <- HT.containsValue ht 10
+  return $ assertBool "Contains value" cnts
+  cnts <- HT.containsValue ht 
+  return $ assertBool "Doesn't contain value" (not cnts)
 
 --------------------------------------------------------------------------------
 -- Tests for basic linked maps
