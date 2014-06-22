@@ -183,6 +183,10 @@ isTombstone :: Value val -> Bool
 isTombstone T = True
 isTombstone _ = False
 
+isKEmpty :: Key key -> Bool
+isKEmpty Kempty = True
+isKempty _ = False
+
 --TODO what if primed Tombstone
 
 {--
@@ -430,19 +434,23 @@ containsKey table key = do
 
 
 
-containsValue ::  ConcurrentHashTable key val -> val -> IO(Bool)
+containsValue :: (Eq val) => ConcurrentHashTable key val -> val -> IO(Bool)
 containsValue table val = do let kvsref = kvs table
 			     kv <- readIORef kvsref
 			     containsVal kv (V val)
 --TODO low priority
 --TODO adopt if changes to data representation
 
-containsVal :: Kvs key val -> Value val -> IO(Bool)
+containsVal :: forall key val. (Eq val) => Kvs key val -> Value val -> IO(Bool)
 containsVal kvs val = do let slts = slots kvs
                          anyM (pred val) slts
 			where
 			pred :: Value val -> State key val -> IO(Bool)
-			pred val slot = undefined --TODO possibly check if key is set (linearistion point for get is key AND value set)
+			pred val slot = do sltkey <- readKeySlot slot 
+					   sltval <- readValueSlot slot
+					   if isKEmpty sltkey then return False else
+						if valComp sltval val then return True else return False
+						-- check if key is set (linearistion point for get is key AND value set) FIXME Primed values
 			anyM :: Monad m => (a -> m Bool) -> V.Vector a -> m Bool
 			anyM = \f -> \v ->   V.foldM' (\a -> \b -> undefined) False v --TODO
 --TODO adopt to resizing, (by recursivly calling for newkvs) anyway what about primed, I should read that up

@@ -74,9 +74,15 @@ sliceCheck slm = do
 --Tests for Hash Table
 ht1 :: IO (Assertion)
 ht1 = do
-  ht <- HT.newConcurrentHashTableHint 4000
+  ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTable Int Int) 
   ise <- HT.isEmpty ht
   return $ assertBool "Hashtable is empty" ise
+  ret <-(HT.put ht 10 10)::IO(Maybe Int)
+  return $ assertBool  "No old value" (Nothing  == ret)
+  sze <- HT.size ht
+  return $ assertBool  "Hashtable holds 1 Element" (1 == sze)
+  ret <- (HT.get ht 10)::IO(Maybe Int)
+  return $ assertBool  "Basic put and get" (ret == Just 10)
 
 --------------------------------------------------------------------------------
 -- Tests for basic linked maps
