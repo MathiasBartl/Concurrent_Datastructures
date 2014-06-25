@@ -1,6 +1,6 @@
 Name: concurrent-hashtable
 Version: 0.0.0.1
-License: GPL3
+License: GPL-3
 License-file: LICENSE
 Author: Mathias Otto Bartl
 Maintainer: mathiasbartl@web.de
@@ -21,7 +21,7 @@ Description:
 
 Library
   exposed-modules: Placeholder
-  build-depends: atomic-primops >= 0.6.0.5, hashable >= 1.2.2.0
+  build-depends: atomic-primops >= 0.6.0.5, hashable >= 1.2.2.0, base >=4.0 && <5.0, vector >= 0.10.10.0, either-unwrap >= 1.1
   extensions: CPP
   ghc-options: -O2
 
