@@ -297,8 +297,23 @@ very easy to understand, as long as you ignore the informal descriptions
 # 19.06.2014
  - http://hunit.sourceforge.net/HUnit-1.0/Guide.html
  - http://www.haskell.org/cabal/users-guide/developing-packages.html#test-suites
- - 
 
+# 21.06.2014
+
+ - http://www.haskell.org/haskellwiki/Bracket_pattern
+
+
+# 24.06.2014
+
+ - https://github.com/gregorycollins/hashtables/blob/master/src/Data/HashTable/Internal/UnsafeTricks.hs
+ - http://www.haskell.org/ghc/docs/7.6.2/html/libraries/ghc-prim-0.3.0.0/GHC-Prim.html#v:unsafeCoerce-35-
+ - http://www.haskell.org/haskellwiki/Algebraic_data_type
+ - http://www.haskell.org/haskellwiki/Abstract_data_type
+ - http://www.haskell.org/haskellwiki/Concrete_data_type
+ - http://www.haskell.org/haskellwiki/Concrete_view
+ - https://hackage.haskell.org/package/base-4.7.0.0/docs/GHC-Exts.html
+ - http://lambda.jstolarek.com/2013/08/
+   stuff on the tagToEnum# primeop
 reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
@@ -317,3 +332,5 @@ http://www.haskell.org/haddock/doc/html/index.html
 https://help.github.com/articles/github-flavored-markdown
 http://www.haskell.org/haskellwiki/Numeric_Haskell:_A_Vector_Tutorial
 http://www.mpi-sws.org/~turon/reagents.pdf
+www.haskell.org/haskellwiki/Concrete_view
+https://ghc.haskell.org/trac/ghc/wiki/Commentary/PrimOps
