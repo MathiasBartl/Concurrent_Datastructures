@@ -325,7 +325,8 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://hackage.haskell.org/package/vector-0.4.2/docs/Data-Vector-Fusion-Stream.html
    looking for an hint to implement anyM
  - http://hackage.haskell.org/package/Stream-0.4.1/docs/Data-Stream.html
- 
+ - http://www.haskell.org/ghc/docs/7.0.2/html/libraries/ghc-prim-0.2.0.0/GHC-Prim.html#g:19
+ - http://tester-lin.soic.indiana.edu:8080/job/Mathias_concurrent_hashtable/CABAL_FLAGS1=-fdebug,JENKINS_GHC=7.6.3,PROF=0,label=linux-soic/30/changes#detail0
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
@@ -346,3 +347,4 @@ http://www.haskell.org/haskellwiki/Numeric_Haskell:_A_Vector_Tutorial
 http://www.mpi-sws.org/~turon/reagents.pdf
 www.haskell.org/haskellwiki/Concrete_view
 https://ghc.haskell.org/trac/ghc/wiki/Commentary/PrimOps
+https://github.com/ghc/ghc/blob/master/compiler/prelude/primops.txt.pp
