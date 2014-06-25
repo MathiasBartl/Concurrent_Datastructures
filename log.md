@@ -312,9 +312,21 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://www.haskell.org/haskellwiki/Concrete_data_type
  - http://www.haskell.org/haskellwiki/Concrete_view
  - https://hackage.haskell.org/package/base-4.7.0.0/docs/GHC-Exts.html
+   tagToEnum# and other interesting stuff
  - http://lambda.jstolarek.com/2013/08/
-   stuff on the tagToEnum# primeop
-reading list:
+   stuff on the tagToEnum# primeop#
+
+# 25.06.2014
+
+ - https://developer.github.com/v3/issues/
+ - https://developer.github.com/v3/issues/
+ - https://github.com/MathiasBartl/Concurrent_Datastructures/commit/69bb0785b79f8badbe7b85ac20a5df282f81ef45
+ - http://hackage.haskell.org/package/vector-0.7/docs/Data-Vector-Generic.html
+ - http://hackage.haskell.org/package/vector-0.4.2/docs/Data-Vector-Fusion-Stream.html
+   looking for an hint to implement anyM
+ - http://hackage.haskell.org/package/Stream-0.4.1/docs/Data-Stream.html
+ 
+# reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
 haskell channels

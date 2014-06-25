@@ -55,7 +55,7 @@ data Key key = Kempty | K key deriving (Eq) --TODO make instance of Eq --TODO do
 -- T : empty, tombstone, Tp : tombstone primed, V : value, Vp : value primed --TODO need tobstoes to be primed
 data Value value =  T | Tp |V value | Vp value | S deriving (Eq) --TODO what kind of comparision is used
 
-data State k v =   State {
+data Slot k v =   Slot {
 				key :: IORef (Key k)
 				, value :: IORef (Value v)
 				}
@@ -88,7 +88,7 @@ data ValComparator = MATCH_ANY | NO_MATCH_OLD deriving Eq
 type ValComp val = Either (Value val) ValComparator 
 
 
-type Slots key val = V.Vector (State key val)
+type Slots key val = V.Vector (Slot key val)
 --TODO issue accessing the array generates a full copy, fix this latter 
 
 data ConcurrentHashTable key val = ConcurrentHashTable {	
@@ -99,7 +99,7 @@ data ConcurrentHashTable key val = ConcurrentHashTable {
 -- does not terminate if array is full, and key is not in it
 -- TODO, use fitting hash function
 getSlot :: forall key value . (Hashable key, Eq key) =>  
-           Slots key value -> Mask -> key -> IO(State key value)
+           Slots key value -> Mask -> key -> IO(Slot key value)
 getSlot slots mask key =  do	let idx = hsh key mask
                                     newkey = K key 
 				slot <- getSlt slots newkey idx mask
@@ -110,13 +110,13 @@ getSlot slots mask key =  do	let idx = hsh key mask
 		      full :: Key key -> Key key -> Bool
 		      full  Kempty _ = False
 		      full  k1 k2 = not (keyComp k1 k2)
-		      getSlt:: Slots key value -> Key key -> SlotsIndex -> Mask -> IO(State key value)
+		      getSlt:: Slots key value -> Key key -> SlotsIndex -> Mask -> IO(Slot key value)
 		      getSlt slots newkey idx mask =
-                        do let slot = (slots V.! idx) :: (State key value)
+                        do let slot = (slots V.! idx) :: (Slot key value)
                            oldkey <- (readKeySlot slot)::IO(Key key)
                            slot <- (if full oldkey newkey
                                     then getSlt slots newkey (collision idx mask) mask
-                                    else return slot) :: IO (State key value)
+                                    else return slot) :: IO (Slot key value)
                            return slot --TODO count reprobes 
 
 collision :: SlotsIndex -> Mask -> SlotsIndex
@@ -144,7 +144,7 @@ keyComp (K k1) (K k2) = k1 == k2 --TODO eqality on key what about hashes
 
 --compares the key in a slot with another key
 keyCompSlot:: Eq key => 
-          State key val-> Key key -> IO Bool
+          Slot key val-> Key key -> IO Bool
 keyCompSlot slot key = do slotkey <- readKeySlot slot
 		          return $ keyComp slotkey key
 
@@ -196,7 +196,7 @@ lookup table k = do
 		slotkey <- readIORef ( key slot)
 		slotvalue <- readIORef (value slot)
 		return $ getValue slotkey slotvalue
-	where --getSlot :: ConcurrentHashTable key val -> key -> State key val
+	where --getSlot :: ConcurrentHashTable key val -> key -> Slot key val
 	      --getSlot tbl key = getSlot (slots tbl) (mask tbl)  
  
 	      getValue :: Key key -> Value val -> Maybe val
@@ -231,17 +231,17 @@ get_impl table kvs key fullhash = do let msk = mask kvs
 --Accessing the slot
 --------------------------------------------------------------------------------------------------------------------------------
 
-readKeySlot:: State key value -> IO (Key key)
+readKeySlot:: Slot key value -> IO (Key key)
 readKeySlot state = readIORef ( key state  )
 		
-readValueSlot:: State key value -> IO (Value value)
+readValueSlot:: Slot key value -> IO (Value value)
 readValueSlot state = readIORef ( value state  )
 	
 
 --TODO compare means pointer equality, so get this fixed
 --TODO Question When are 2 Keys equal, and why does ticket not require a to be in class eq, how exactly does the COMPARE part work
-casKeySlot :: forall key value. (State key value) -> Key key -> Key key -> IO ( Bool )
-casKeySlot (State ke va) old new = do
+casKeySlot :: forall key value. (Slot key value) -> Key key -> Key key -> IO ( Bool )
+casKeySlot (Slot ke va) old new = do
 				oldref <- (newIORef old)::IO(IORef (Key key))
 				newref <- (newIORef new)::IO(IORef (Key key))
 				oldticket <- (readForCAS oldref) ::IO(Ticket(Key key))
@@ -251,8 +251,8 @@ casKeySlot (State ke va) old new = do
 
 --TODO, see casKeySlot
 casValueSlot :: forall key value.
-	        (State key value) -> Value value -> Value value -> IO ( Bool )
-casValueSlot (State ke va) old new = do
+	        (Slot key value) -> Value value -> Value value -> IO ( Bool )
+casValueSlot (Slot ke va) old new = do
 				oldref <- (newIORef old)::IO(IORef (Value value))
 				newref <- (newIORef new)::IO(IORef (Value value))
 				oldticket <- (readForCAS oldref) ::IO(Ticket(Value value))
@@ -260,7 +260,7 @@ casValueSlot (State ke va) old new = do
 				(returnvalue, _) <- (casIORef2 va oldticket newticket)::IO(Bool, Ticket(Value value)) 
 				return returnvalue
 
---setValueSlot :: forall key value. (State key value) -> Value value -> Value value -> IO ( Bool )
+--setValueSlot :: forall key value. (Slot key value) -> Value value -> Value value -> IO ( Bool )
 
 
 
@@ -291,7 +291,7 @@ putIfMatch kvs key putVal expVal = do
   return $ assert $ not $ keyComp key  Kempty --TODO use eq TODO this is not in the original
   return $ assert $ not $ isPrimedValue putVal
   return $ assert $ not $ isPrimedValComp expVal
-  slot  <- (getSlot slts msk k) ::IO(State key val)
+  slot  <- (getSlot slts msk k) ::IO(Slot key val)
   --TODO if putvall TMBSTONE and oldkey == empty do nothing
   oldKey <-  readKeySlot slot
   if oldKey == Kempty
@@ -315,7 +315,7 @@ putIfMatch kvs key putVal expVal = do
                                                                         else rekcall (collision idx msk)
 											 (reprobectr +1)					
 				-- checks if the key in slt fits or puts the newkey there if thers an empts
-				where helper2 :: State key val -> IO Bool
+				where helper2 :: Slot key val -> IO Bool
 				      helper2 slt = do wasEmpty <- casKeySlot slt Kempty (K key)
 						       if wasEmpty then incSlotsCntr else return () 
 --TODO doing a simple check before the expensive cas should not be harmfull, because of the monotonic nature of keys
@@ -323,25 +323,25 @@ putIfMatch kvs key putVal expVal = do
 --then ony slotscounter, or do the inc of size counter in the seval
 							 keyCompSlot slt (K key) --simple key compare, TODO use fullhash
 					--set the value, return old value
-				      setval :: State key val -> Value val -> ValComp val -> IO(Value val)
+				      setval :: Slot key val -> Value val -> ValComp val -> IO(Value val)
 		       		      setval slt newval oldvalcmp = if isRight oldvalcmp then if (fromRight oldvalcmp) ==  MATCH_ANY then match_any slt newval
 						else no_match_old slt newval 
 					        else match slt newval (fromLeft oldvalcmp)
 --TODO is there any backoff in cliff clicks algorithm
-					where match_any :: State key val -> Value val -> IO(Value val)
+					where match_any :: Slot key val -> Value val -> IO(Value val)
 					      match_any slt newval = do oldval <- readValueSlot slt
 									if isTombstone oldval then return oldval else --is that actually ok if not done in order
 										do casValueSlot slt oldval newval
 										   ret <- undefined --TODO cas return oldvalue
 										   if ret == oldval then return ret else match_any slt newval
-					      no_match_old :: State key val -> Value val -> IO(Value val)
+					      no_match_old :: Slot key val -> Value val -> IO(Value val)
 					      no_match_old slt newval = do oldval <- readValueSlot slt --TODO do I actually need to do a cas here
 									   if valComp oldval newval then return oldval else
 										do casValueSlot slt oldval newval
 										   ret <-  undefined
 										   if ret == oldval then return ret else no_match_old slt newval 
 											--FIXME control if cas has been sucessfull should not require an expensive equality comparision on values
-					      match :: State key val -> Value val -> Value val-> IO(Value val)
+					      match :: Slot key val -> Value val -> Value val-> IO(Value val)
 					      match slt newval oldval = do success <- casValueSlot slt oldval newval
                                                                            return undefined --TODO return old value
 						--TODO, do we need a cas here
@@ -445,17 +445,21 @@ containsVal :: forall key val. (Eq val) => Kvs key val -> Value val -> IO(Bool)
 containsVal kvs val = do let slts = slots kvs
                          anyM (pred val) slts
 			where
-			pred :: Value val -> State key val -> IO(Bool)
+			pred :: Value val -> Slot key val -> IO(Bool)
 			pred val slot = do sltkey <- readKeySlot slot 
 					   sltval <- readValueSlot slot
 					   if isKEmpty sltkey then return False else
 						if valComp sltval val then return True else return False
 						-- check if key is set (linearistion point for get is key AND value set) FIXME Primed values
-			anyM :: Monad m => (a -> m Bool) -> V.Vector a -> m Bool
-			anyM = \f -> \v ->   V.foldM' (\a -> \b -> undefined) False v --TODO
+			anyM :: forall m a. Monad m => (a -> m Bool) -> V.Vector a -> m Bool
+			anyM test v =   V.foldM' g False v 
+				where g :: Bool -> a -> (m Bool)
+              			      g akk content = do testresult <- test content
+				                         return $ testresult && akk
 --TODO adopt to resizing, (by recursivly calling for newkvs) anyway what about primed, I should read that up
 --TODO for this the linearisation point for inputing would be the cas on value even if the cas on key has not be done yet, actually its better to think about this for a while, maybe not export this function for a while
 --TODO write an monadic any
+--TODO no reason anyM should not be inlined
 
 put :: (Eq val,Eq key, Hashable key) => 
        ConcurrentHashTable key val -> key -> val -> IO( Maybe val)
@@ -552,10 +556,10 @@ newKvs size  counter = do let msk = getMask size
 		newSlots size = V.replicateM size newSlot --TODO
 		newSlotsCounter :: IO(SlotsCounter)
 		newSlotsCounter = newCounter 0
-		newSlot	:: IO(State key val)
+		newSlot	:: IO(Slot key val)
 		newSlot = do keyref <- newIORef Kempty
 			     valref <- newIORef T     --TODO optimize somewhere, somewhat 
-			     return $ State keyref valref 
+			     return $ Slot keyref valref 
 		
 
 
