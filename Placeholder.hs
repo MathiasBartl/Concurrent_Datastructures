@@ -183,6 +183,10 @@ isTombstone :: Value val -> Bool
 isTombstone T = True
 isTombstone _ = False
 
+isValue :: Value val -> Bool
+isValue (V _) = True
+isValue _ = False
+
 isKEmpty :: Key key -> Bool
 isKEmpty Kempty = True
 isKempty _ = False
@@ -247,7 +251,8 @@ casKeySlot (Slot ke va) old new = do
 				oldticket <- (readForCAS oldref) ::IO(Ticket(Key key))
 				newticket <- (readForCAS newref) ::IO(Ticket(Key key))
 				(returnvalue, _) <- (casIORef2 ke oldticket newticket)::IO(Bool, Ticket(Key key)) 
-				return returnvalue					
+				return returnvalue
+			--TODO compare old with key value if not equal return false, oldkey else cas oldkey if succes return true oldkey, if fail					
 
 --TODO, see casKeySlot
 casValueSlot :: forall key value.
@@ -288,14 +293,14 @@ putIfMatch kvs key putVal expVal = do
       K k = key
       idx = maskHash msk fullhash ::SlotsIndex
   --reprobe_cnt <- return 0
-  return $ assert $ not $ keyComp key  Kempty --TODO use eq TODO this is not in the original
+  return $ assert $ not $ isKEmpty key --TODO use eq TODO this is not in the original
   return $ assert $ not $ isPrimedValue putVal
   return $ assert $ not $ isPrimedValComp expVal
   slot  <- (getSlot slts msk k) ::IO(Slot key val)
   --TODO if putvall TMBSTONE and oldkey == empty do nothing
   oldKey <-  readKeySlot slot
-  if oldKey == Kempty
-    then if (putVal == T)
+  if isKEmpty oldKey 
+    then if (isTombstone putVal)
          then return T {-TODO break writing value unnecessary -} --TODO put this test at the beginning
          else helper slts msk k fullhash putVal expVal idx newReprobeCounter
     else helper slts msk k fullhash putVal expVal idx newReprobeCounter  
