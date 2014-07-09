@@ -244,26 +244,29 @@ readValueSlot state = readIORef ( value state  )
 
 --TODO compare means pointer equality, so get this fixed
 --TODO Question When are 2 Keys equal, and why does ticket not require a to be in class eq, how exactly does the COMPARE part work
-casKeySlot :: forall key value. (Slot key value) -> Key key -> Key key -> IO ( Bool )
+casKeySlot :: forall key value. (Eq key) => (Slot key value) -> Key key -> Key key -> IO ( (Bool, Key key) )
 casKeySlot (Slot ke va) old new = do
-				oldref <- (newIORef old)::IO(IORef (Key key))
-				newref <- (newIORef new)::IO(IORef (Key key))
-				oldticket <- (readForCAS oldref) ::IO(Ticket(Key key))
-				newticket <- (readForCAS newref) ::IO(Ticket(Key key))
-				(returnvalue, _) <- (casIORef2 ke oldticket newticket)::IO(Bool, Ticket(Key key)) 
-				return returnvalue
+				sltold <- readIORef ke
+				if not (keyComp sltold old)  then return (False, sltold) --Huh, what do I want to do 
+					else do oldref <- (newIORef old)::IO(IORef (Key key))--FIXME this block
+					        newref <- (newIORef new)::IO(IORef (Key key))
+					        oldticket <- (readForCAS oldref) ::IO(Ticket(Key key))
+					        newticket <- (readForCAS newref) ::IO(Ticket(Key key))
+					        (success, _) <- (casIORef2 ke oldticket newticket)::IO(Bool, Ticket(Key key))
+					        oldvalue <- undefined 
+					        return (success, oldvalue)
 			--TODO compare old with key value if not equal return false, oldkey else cas oldkey if succes return true oldkey, if fail					
 
 --TODO, see casKeySlot
 casValueSlot :: forall key value.
-	        (Slot key value) -> Value value -> Value value -> IO ( Bool )
+	        (Slot key value) -> Value value -> Value value -> IO ( Bool, Value value )
 casValueSlot (Slot ke va) old new = do
 				oldref <- (newIORef old)::IO(IORef (Value value))
 				newref <- (newIORef new)::IO(IORef (Value value))
 				oldticket <- (readForCAS oldref) ::IO(Ticket(Value value))
 				newticket <- (readForCAS newref) ::IO(Ticket(Value value))
-				(returnvalue, _) <- (casIORef2 va oldticket newticket)::IO(Bool, Ticket(Value value)) 
-				return returnvalue
+				(success, _) <- (casIORef2 va oldticket newticket)::IO(Bool, Ticket(Value value)) 
+				return (success, undefined)
 
 --setValueSlot :: forall key value. (Slot key value) -> Value value -> Value value -> IO ( Bool )
 
@@ -321,7 +324,7 @@ putIfMatch kvs key putVal expVal = do
 											 (reprobectr +1)					
 				-- checks if the key in slt fits or puts the newkey there if thers an empts
 				where helper2 :: Slot key val -> IO Bool
-				      helper2 slt = do wasEmpty <- casKeySlot slt Kempty (K key)
+				      helper2 slt = do (wasEmpty,_) <- casKeySlot slt Kempty (K key)
 						       if wasEmpty then incSlotsCntr else return () 
 --TODO doing a simple check before the expensive cas should not be harmfull, because of the monotonic nature of keys
 						       if wasEmpty then return True else --TODO inc slots counter, inc size counter, except putvalue is a tombstone
@@ -336,19 +339,16 @@ putIfMatch kvs key putVal expVal = do
 					where match_any :: Slot key val -> Value val -> IO(Value val)
 					      match_any slt newval = do oldval <- readValueSlot slt
 									if isTombstone oldval then return oldval else --is that actually ok if not done in order
-										do casValueSlot slt oldval newval
-										   ret <- undefined --TODO cas return oldvalue
-										   if ret == oldval then return ret else match_any slt newval
+										do (success, ret) <- casValueSlot slt oldval newval
+										   if success then return ret else match_any slt newval
 					      no_match_old :: Slot key val -> Value val -> IO(Value val)
 					      no_match_old slt newval = do oldval <- readValueSlot slt --TODO do I actually need to do a cas here
 									   if valComp oldval newval then return oldval else
-										do casValueSlot slt oldval newval
-										   ret <-  undefined
-										   if ret == oldval then return ret else no_match_old slt newval 
-											--FIXME control if cas has been sucessfull should not require an expensive equality comparision on values
+										do (success, ret) <- casValueSlot slt oldval newval
+										   if success then return ret else no_match_old slt newval 
 					      match :: Slot key val -> Value val -> Value val-> IO(Value val)
-					      match slt newval oldval = do success <- casValueSlot slt oldval newval
-                                                                           return undefined --TODO return old value
+					      match slt newval oldval = do (_, ret) <- casValueSlot slt oldval newval
+                                                                           return ret
 						--TODO, do we need a cas here
 				      --TODO if T to Value inc size counter, if V to T or S dec size counter
 				      opSizeCntr :: Value val -> Value val -> IO()
