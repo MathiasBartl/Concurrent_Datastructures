@@ -244,29 +244,33 @@ readValueSlot state = readIORef ( value state  )
 
 --TODO compare means pointer equality, so get this fixed
 --TODO Question When are 2 Keys equal, and why does ticket not require a to be in class eq, how exactly does the COMPARE part work
-casKeySlot :: forall key value. (Eq key) => (Slot key value) -> Key key -> Key key -> IO ( (Bool, Key key) )
-casKeySlot (Slot ke va) old new = do
+casKeySlot :: forall key value. (Eq key) =>
+		 (Slot key value) -> Key key -> Key key -> IO ( (Bool, Key key) )
+casKeySlot slt@(Slot ke va) old new = do
 				sltold <- readIORef ke
-				if not (keyComp sltold old)  then return (False, sltold) --Huh, what do I want to do 
-					else do oldref <- (newIORef old)::IO(IORef (Key key))--FIXME this block
-					        newref <- (newIORef new)::IO(IORef (Key key))
+				if not (keyComp sltold old) then return (False, sltold) --TODO Issue keyComp is not atomic 
+					else do oldref <- (return ke)::IO(IORef (Key key))
+						newref <- (newIORef new)::IO(IORef (Key key))
 					        oldticket <- (readForCAS oldref) ::IO(Ticket(Key key))
 					        newticket <- (readForCAS newref) ::IO(Ticket(Key key))
-					        (success, _) <- (casIORef2 ke oldticket newticket)::IO(Bool, Ticket(Key key))
-					        oldvalue <- undefined 
-					        return (success, oldvalue)
+						(success, _) <- (casIORef2 ke oldticket newticket)::IO(Bool, Ticket(Key key))
+						oldkey <- (return sltold)::IO(Key key) --TODO readIORef seems unnecessary
+				        	if success then return (success, oldkey) else casKeySlot slt old new--TODO, is the repetition really necessary 
 			--TODO compare old with key value if not equal return false, oldkey else cas oldkey if succes return true oldkey, if fail					
 
 --TODO, see casKeySlot
-casValueSlot :: forall key value.
+casValueSlot :: forall key value. (Eq value) =>
 	        (Slot key value) -> Value value -> Value value -> IO ( Bool, Value value )
-casValueSlot (Slot ke va) old new = do
-				oldref <- (newIORef old)::IO(IORef (Value value))
-				newref <- (newIORef new)::IO(IORef (Value value))
-				oldticket <- (readForCAS oldref) ::IO(Ticket(Value value))
-				newticket <- (readForCAS newref) ::IO(Ticket(Value value))
-				(success, _) <- (casIORef2 va oldticket newticket)::IO(Bool, Ticket(Value value)) 
-				return (success, undefined)
+casValueSlot slt@(Slot ke va) old new = do
+				sltold <- readIORef va
+				if not (valComp sltold old)  then return (False, sltold)
+				   else do oldref <- return va
+					   newref <- (newIORef new)::IO(IORef (Value value))
+					   oldticket <- (readForCAS oldref) ::IO(Ticket(Value value))
+					   newticket <- (readForCAS newref) ::IO(Ticket(Value value))
+					   (success, _) <- (casIORef2 va oldticket newticket)::IO(Bool, Ticket(Value value))
+ 					   oldvalue <- return sltold
+					   if success then return (success, oldvalue) else casValueSlot slt old new--TODO, is the repetition really necessary 
 
 --setValueSlot :: forall key value. (Slot key value) -> Value value -> Value value -> IO ( Bool )
 
