@@ -334,6 +334,23 @@ very easy to understand, as long as you ignore the informal descriptions
 
 # 09.07.2014
  - http://www.haskell.org/haskellwiki/Common_Misunderstandings
+
+# 12.07.2014
+ - https://github.com/rrnewton/haskell-lockfree/issues/10
+ - http://www.haskell.org/haskellwiki/Template_Haskell
+
+# 15.07.2014
+ 
+ - https://github.com/gelisam/hawk/issues/115
+ - https://github.com/ekmett/comonad/issues/9
+   dyn_hi missing bug
+
+# 17.07.2014
+ - http://en.wikipedia.org/wiki/Jenkins_%28software%29
+ - http://en.wikipedia.org/wiki/Continuous_integration 
+ - https://www.youtube.com/watch?v=T9ChuI8q2jo
+   jenkins tutorial
+ - http://en.wikipedia.org/wiki/Continuous_delivery 
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
