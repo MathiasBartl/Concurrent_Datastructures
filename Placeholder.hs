@@ -179,6 +179,12 @@ isSentinel :: Value val -> Bool
 isSentinel S = True
 isSentinel _ = False
 
+
+--puts an Sentinel into the slot
+kill :: Slot key val -> IO ()
+kill (Slot _ v) = writeIORef v S 
+
+
 isTombstone :: Value val -> Bool
 isTombstone T = True
 isTombstone _ = False
@@ -193,24 +199,12 @@ isKempty _ = False
 
 --TODO what if primed Tombstone
 
-{--
-lookup :: Hashable key => ConcurrentHashTable key val -> key -> IO ( Maybe val)
-lookup table k = do
-		slot <- getSlot table k
-		slotkey <- readIORef ( key slot)
-		slotvalue <- readIORef (value slot)
-		return $ getValue slotkey slotvalue
-	where --getSlot :: ConcurrentHashTable key val -> key -> Slot key val
-	      --getSlot tbl key = getSlot (slots tbl) (mask tbl)  
- 
-	      getValue :: Key key -> Value val -> Maybe val
-	      getValue Kempty _ = Nothing
-	      getValue (K _) v  = Just v 
---}
+
 
 
 
 --see get
+--reading during resize is already imlemented
 get_impl :: (Eq key, Hashable key) => 
             ConcurrentHashTable key val -> Kvs key val -> key -> FullHash -> IO(Value val)
 get_impl table kvs key fullhash = do let msk = mask kvs
@@ -287,7 +281,8 @@ putIfMatch_T table key putVal expVal = do let kvsref = kvs table
                                           putIfMatch kv ky putVal expVal                                   
 
 
-
+--TODO write during resize
+--TODO refactor for readability/structure
 --TODO, do we need to pass the Hashtable as parameter?
 --TODO use only by acessor functions, not by resizing algorithm
 --TODO assert key is not empty, putval is no empty, but possibly a tombstone, key value are not primed 
@@ -300,6 +295,7 @@ putIfMatch kvs key putVal expVal = do
       K k = key
       idx = maskHash msk fullhash ::SlotsIndex
   --reprobe_cnt <- return 0
+  --TODO get highest kvs
   return $ assert $ not $ isKEmpty key --TODO use eq TODO this is not in the original
   return $ assert $ not $ isPrimedValue putVal
   return $ assert $ not $ isPrimedValComp expVal
