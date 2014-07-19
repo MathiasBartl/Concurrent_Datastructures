@@ -2,9 +2,10 @@ Name: concurrent-hashtable
 Version: 0.0.0.1
 License: GPL-3
 License-file: LICENSE
+--TODO choose a licence/licenses for linking with unfree code
 Author: Mathias Otto Bartl
 Maintainer: mathiasbartl@web.de
-Category: Data
+Category: Data, Concurrent
 Build-type: Simple
 Cabal-version: >= 1.8
 
@@ -16,14 +17,24 @@ Synopsis: A lockfree, waitfree concurrent hashtable.
 Description:
 
   A lockfree, waitfree concurrent hashtable.
+  Based on: TODO
   .
 
 
 Library
   exposed-modules: Placeholder
   build-depends: atomic-primops >= 0.6.0.5, hashable >= 1.2.2.0, base >=4.0 && <5.0, vector >= 0.10.10.0, either-unwrap >= 1.1
-  extensions: CPP
   ghc-options: -O2
+
+Test-Suite test-placeholder
+  type: exitcode-stdio-1.0
+  main-is: test.hs
+  build-depends: base >=4.0 && <5.0, HUnit >= 1.2.5.2, test-framework >= 0.8, test-framework-hunit >= 0.3, time >= 1.4 , either-unwrap >= 1.1
+    , vector >= 0.10.10.0, atomic-primops >= 0.6.0.5, hashable >= 1.2.2.0, concurrent-skiplist >= 0.1.0.0, random >= 1.0, async >= 2.0
+    , test-framework-th >= 0.2.4
+  -- TODO set HUnit, test-framework, test-framework-hunit, time minimum version number
+  -- TODO remove reference to concurrent skiplist
+  ghc-options: -O2 -threaded -rtsopts 
 
 Source-Repository head
     Type: git
