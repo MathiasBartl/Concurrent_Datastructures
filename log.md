@@ -351,6 +351,11 @@ very easy to understand, as long as you ignore the informal descriptions
  - https://www.youtube.com/watch?v=T9ChuI8q2jo
    jenkins tutorial
  - http://en.wikipedia.org/wiki/Continuous_delivery 
+
+# 22.07.2014
+ - http://www.haskell.org/haskellwiki/Debugging
+ - http://www.ittc.ku.edu/csdl/fpg/software/hood.html
+   debugger
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

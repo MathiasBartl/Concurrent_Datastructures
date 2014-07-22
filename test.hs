@@ -87,6 +87,7 @@ ht1 = do
   return $ assertBool "Contains value" cnts
   cnts <- HT.containsValue ht 11
   return $ assertBool "Doesn't contain value" (not cnts)
+  return $ assertBool "should fail" False
 
 --------------------------------------------------------------------------------
 -- Tests for basic linked maps

@@ -55,6 +55,8 @@ data Key key = Kempty | K key deriving (Eq) --TODO make instance of Eq --TODO do
 -- T : empty, tombstone, Tp : tombstone primed, V : value, Vp : value primed --TODO need tobstoes to be primed
 data Value value =  T | Tp |V value | Vp value | S deriving (Eq) --TODO what kind of comparision is used
 
+
+
 data Slot k v =   Slot {
 				key :: IORef (Key k)
 				, value :: IORef (Value v)
@@ -87,6 +89,7 @@ data ValComparator = MATCH_ANY | NO_MATCH_OLD deriving Eq
 
 type ValComp val = Either (Value val) ValComparator 
 
+type ReturnValue val = (Bool, Value val)    --TODO find good name for this type, write description
 
 type Slots key val = V.Vector (Slot key val)
 --TODO issue accessing the array generates a full copy, fix this latter 
@@ -195,7 +198,7 @@ isValue _ = False
 
 isKEmpty :: Key key -> Bool
 isKEmpty Kempty = True
-isKempty _ = False
+isKEmpty _ = False
 
 --TODO what if primed Tombstone
 
@@ -295,32 +298,33 @@ putIfMatch kvs key putVal expVal = do
       K k = key
       idx = maskHash msk fullhash ::SlotsIndex
   --reprobe_cnt <- return 0
-  --TODO get highest kvs
+  --TODO get highest kvs and test if a resize is running and then get the second highest kvs
   return $ assert $ not $ isKEmpty key --TODO use eq TODO this is not in the original
   return $ assert $ not $ isPrimedValue putVal
   return $ assert $ not $ isPrimedValComp expVal
   slot  <- (getSlot slts msk k) ::IO(Slot key val)
-  --TODO if putvall TMBSTONE and oldkey == empty do nothing
+  
   oldKey <-  readKeySlot slot
-  if isKEmpty oldKey 
+  if isKEmpty oldKey --if putvall TMBSTONE and oldkey == empty do nothing --TODO put this lines into an subfunction
     then if (isTombstone putVal)
-         then return T {-TODO break writing value unnecessary -} --TODO put this test at the beginning
-         else helper slts msk k fullhash putVal expVal idx newReprobeCounter
-    else helper slts msk k fullhash putVal expVal idx newReprobeCounter  
+         then return T {-TODO break writing value unnecessary -} 
+         else ptIfmtch slts msk k fullhash putVal expVal idx newReprobeCounter --TODO remove line duplication
+    else ptIfmtch slts msk k fullhash putVal expVal idx newReprobeCounter  
 --TODO when would cas fail
-     where helper :: Slots key val -> Mask -> key -> FullHash -> Value val -> ValComp val ->
+     --actually does the putting after tests and special cases have been handled
+     where ptIfmtch :: Slots key val -> Mask -> key -> FullHash -> Value val -> ValComp val ->
 	             SlotsIndex -> ReprobeCounter -> IO(Value val)
-           helper slts msk key hsh newval compval idx reprobectr = do let slt = slts V.! idx
-					                                  rekcall = helper slts msk key hsh newval compval
+           ptIfmtch slts msk key hsh newval compval idx reprobectr = do let slt = slts V.! idx
+					                                    rekcall = ptIfmtch slts msk key hsh newval compval
 								--TODO check if Slot is Kempty and compval==match any, then break and return T
-				                                      keyfits <- helper2 slt
-				                                      if keyfits 
-					                                then
-					                                  do ret <- setval slt newval compval
-									     if valCompComp compval ret then --FIXME expensive comparision
-										opSizeCntr ret newval else return ()
-									     return ret
-                                                                        else rekcall (collision idx msk)
+				                                        keyfits <- helper2 slt
+				                                        if keyfits 
+					                                  then
+					                                    do (success,ret) <- setval slt newval compval
+									       if success then --was there an change made 
+										  opSizeCntr ret newval else return ()
+									       return ret
+                                                                          else rekcall (collision idx msk)
 											 (reprobectr +1)					
 				-- checks if the key in slt fits or puts the newkey there if thers an empts
 				where helper2 :: Slot key val -> IO Bool
@@ -331,24 +335,24 @@ putIfMatch kvs key putVal expVal = do
 --then ony slotscounter, or do the inc of size counter in the seval
 							 keyCompSlot slt (K key) --simple key compare, TODO use fullhash
 					--set the value, return old value
-				      setval :: Slot key val -> Value val -> ValComp val -> IO(Value val)
+				      setval :: Slot key val -> Value val -> ValComp val -> IO((Bool,Value val)) --TODO define an datatype (Bool,Value val)
 		       		      setval slt newval oldvalcmp = if isRight oldvalcmp then if (fromRight oldvalcmp) ==  MATCH_ANY then match_any slt newval
 						else no_match_old slt newval 
 					        else match slt newval (fromLeft oldvalcmp)
 --TODO is there any backoff in cliff clicks algorithm
-					where match_any :: Slot key val -> Value val -> IO(Value val)
+					where match_any :: Slot key val -> Value val -> IO((Bool,Value val))
 					      match_any slt newval = do oldval <- readValueSlot slt
-									if isTombstone oldval then return oldval else --is that actually ok if not done in order
+									if isTombstone oldval then return (False,oldval) else --is that actually ok if not done in order
 										do (success, ret) <- casValueSlot slt oldval newval
-										   if success then return ret else match_any slt newval
-					      no_match_old :: Slot key val -> Value val -> IO(Value val)
+										   if success then return (success,ret) else match_any slt newval
+					      no_match_old :: Slot key val -> Value val -> IO((Bool,Value val))
 					      no_match_old slt newval = do oldval <- readValueSlot slt --TODO do I actually need to do a cas here
-									   if valComp oldval newval then return oldval else
+									   if valComp oldval newval then return (False,oldval) else --not successfull
 										do (success, ret) <- casValueSlot slt oldval newval
-										   if success then return ret else no_match_old slt newval 
-					      match :: Slot key val -> Value val -> Value val-> IO(Value val)
-					      match slt newval oldval = do (_, ret) <- casValueSlot slt oldval newval
-                                                                           return ret
+										   if success then (return (success,ret)) else no_match_old slt newval 
+					      match :: Slot key val -> Value val -> Value val-> IO((Bool,Value val))
+					      match slt newval oldval = do (success, ret) <- casValueSlot slt oldval newval
+                                                                           return (success,ret)
 						--TODO, do we need a cas here
 				      --TODO if T to Value inc size counter, if V to T or S dec size counter
 				      opSizeCntr :: Value val -> Value val -> IO()
