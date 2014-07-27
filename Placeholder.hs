@@ -459,6 +459,8 @@ containsValue table val = do let kvsref = kvs table
 --TODO adopt if changes to data representation
 --TODO adopt to resize
 
+
+--FIXME, always seems to return False
 containsVal :: forall key val. (Eq val) => Kvs key val -> Value val -> IO(Bool)
 containsVal kvs val = do let slts = slots kvs
                          anyM (pred val) slts
@@ -473,7 +475,7 @@ containsVal kvs val = do let slts = slots kvs
 			anyM test v =   V.foldM' g False v 
 				where g :: Bool -> a -> (m Bool)
               			      g akk content = do testresult <- test content
-				                         return $ testresult && akk
+				                         return $ testresult || akk --question why &&
 --TODO adopt to resizing, (by recursivly calling for newkvs) anyway what about primed, I should read that up
 --TODO for this the linearisation point for inputing would be the cas on value even if the cas on key has not be done yet, actually its better to think about this for a while, maybe not export this function for a while
 --TODO no reason anyM should not be inlined

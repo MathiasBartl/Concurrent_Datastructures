@@ -15,7 +15,20 @@ setup = do ht <- HT.newConcurrentHashTable
 	   HT.put ht 12 12
            return ht 
 
-tests = TestList [ TestLabel "test1" test1, TestLabel "put" test_put, TestLabel "put to erased slot"  test_put_to_erased_slot, TestLabel "get"  test_get, TestLabel "putIfAbsent" test_putIfAbsent, TestLabel "reove" test_remove, TestLabel "removeKey" test_removeKey, TestLabel "replace" test_replace, TestLabel "replaceTest" test_replaceTest, TestLabel "clear" test_clear, TestLabel "isEmpty" test_isEmpty, TestLabel "size" test_size, TestLabel "cotainsValue" test_containsValue, TestLabel "containsKey" test_containsKey]
+tests = TestList [ TestLabel "test1" test1,
+ TestLabel "put" test_put,
+ TestLabel "put to erased slot"  test_put_to_erased_slot,
+ TestLabel "get"  test_get,
+ TestLabel "putIfAbsent" test_putIfAbsent,
+ TestLabel "reove" test_remove,
+ TestLabel "removeKey" test_removeKey,
+ TestLabel "replace" test_replace,
+ TestLabel "replaceTest" test_replaceTest,
+ TestLabel "clear" test_clear,
+ TestLabel "isEmpty" test_isEmpty,
+ TestLabel "size" test_size,
+ TestLabel "cotainsValue" test_containsValue,
+ TestLabel "containsKey" test_containsKey]
 
 test1 = TestCase ( do ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTable Int Int) 
   		      ise <- HT.isEmpty ht
@@ -30,7 +43,7 @@ test1 = TestCase ( do ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTab
   		      assertBool "Contains value" cnts
  		      cnts <- HT.containsValue ht 11
  		      assertBool "Doesn't contain value" (not cnts)
- 		      assertBool "should fail" False
+ 		
 	)
 
 
