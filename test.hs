@@ -72,22 +72,22 @@ expectedSum = (s * (s + 1)) `quot` 2
 
 --------------------------------------------------------------------------------
 --Tests for Hash Table
-case_ht1 :: IO (Assertion)
+case_ht1 :: Assertion
 case_ht1 = do
   ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTable Int Int) 
   ise <- HT.isEmpty ht
-  return $ assertBool "Hashtable is empty" ise
+  assertBool "Hashtable is empty" ise
   ret <-(HT.put ht 10 10)::IO(Maybe Int)
-  return $ assertBool  "No old value" (Nothing  == ret)
+  assertBool  "No old value" (Nothing  == ret)
   sze <- HT.size ht
-  return $ assertBool  "Hashtable holds 1 Element" (1 == sze)
+  assertBool  "Hashtable holds 1 Element" (1 == sze)
   ret <- (HT.get ht 10)::IO(Maybe Int)
-  return $ assertBool  "Basic put and get" (ret == Just 10)
+  assertBool  "Basic put and get" (ret == Just 10)
   cnts <- HT.containsValue ht 10
-  return $ assertBool "Contains value" cnts
+  assertBool "Contains value" cnts
   cnts <- HT.containsValue ht 11
-  return $ assertBool "Doesn't contain value" (not cnts)
-  return $ assertBool "should fail" False
+  assertBool "Doesn't contain value" (not cnts)
+  assertBool "should fail" False
 
 -- --------------------------------------------------------------------------------
 -- -- Tests for basic linked maps
