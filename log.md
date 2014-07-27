@@ -356,6 +356,9 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://www.haskell.org/haskellwiki/Debugging
  - http://www.ittc.ku.edu/csdl/fpg/software/hood.html
    debugger
+
+# 27.07.2014
+ - http://www.haskell.org/haskellwiki/How_to_write_a_Haskell_program#Testing
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

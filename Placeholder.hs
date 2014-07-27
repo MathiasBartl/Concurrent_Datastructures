@@ -449,6 +449,7 @@ containsValue table val = do let kvsref = kvs table
 			     containsVal kv (V val)
 --TODO low priority
 --TODO adopt if changes to data representation
+--TODO adopt to resize
 
 containsVal :: forall key val. (Eq val) => Kvs key val -> Value val -> IO(Bool)
 containsVal kvs val = do let slts = slots kvs
@@ -467,14 +468,13 @@ containsVal kvs val = do let slts = slots kvs
 				                         return $ testresult && akk
 --TODO adopt to resizing, (by recursivly calling for newkvs) anyway what about primed, I should read that up
 --TODO for this the linearisation point for inputing would be the cas on value even if the cas on key has not be done yet, actually its better to think about this for a while, maybe not export this function for a while
---TODO write an monadic any
 --TODO no reason anyM should not be inlined
 
 put :: (Eq val,Eq key, Hashable key) => 
        ConcurrentHashTable key val -> key -> val -> IO( Maybe val)
 put table key val = do old <- putIfMatch_T table key (V val) (Right NO_MATCH_OLD)
                        return $ unwrapValue old
-
+--puts the value if there is no value matched to the key
 putIfAbsent :: (Eq val,Eq key, Hashable key) => 
                ConcurrentHashTable key val -> key -> val -> IO( Maybe val)
 putIfAbsent table key val = do old <- putIfMatch_T table key (V val) (Left T) --TODO is tombstone correct, what if there is a primed vaue 
