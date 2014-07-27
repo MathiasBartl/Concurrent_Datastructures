@@ -1,9 +1,12 @@
 
 -- tests the concurrent hashtable for basic functionality in a single thread situation
-module ConncurentHashmapTests where
+module Main where
 
 import Test.HUnit
 import qualified Placeholder as HT
+
+import Test.Framework (defaultMain)
+import Test.Framework.Providers.HUnit (hUnitTestToTests)
 
 setup :: IO ( HT.ConcurrentHashTable Int Int )
 setup = do ht <- HT.newConcurrentHashTable
@@ -27,6 +30,7 @@ test1 = TestCase ( do ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTab
   		      assertBool "Contains value" cnts
  		      cnts <- HT.containsValue ht 11
  		      assertBool "Doesn't contain value" (not cnts)
+ 		      assertBool "should fail" False
 	)
 
 
@@ -196,3 +200,6 @@ test_containsKey =  TestCase (do ht <- setup
 --TODO testcase for sizecouter
 --TODO testcased for other fuctions when apropriate
 
+
+main :: IO ()
+main = defaultMain (hUnitTestToTests test1)
