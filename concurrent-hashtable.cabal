@@ -28,9 +28,12 @@ Library
 
 Test-Suite test-placeholder
   type: exitcode-stdio-1.0
-  main-is: test.hs
+  main-is: test2.hs
+  hs-source-dirs: ./
   build-depends: base >=4.0 && <5.0, HUnit >= 1.2.5.2, test-framework >= 0.8, test-framework-hunit >= 0.3, time >= 1.4 , either-unwrap >= 1.1
-    , vector >= 0.10.10.0, atomic-primops >= 0.6.0.5, hashable >= 1.2.2.0, concurrent-skiplist >= 0.1.0.0, random >= 1.0, async >= 2.0
+    , vector >= 0.10.10.0, atomic-primops >= 0.6.0.5, hashable >= 1.2.2.0
+--    , concurrent-skiplist >= 0.1.0.0
+    , random >= 1.0, async >= 2.0
     , test-framework-th >= 0.2.4
   -- TODO set HUnit, test-framework, test-framework-hunit, time minimum version number
   -- TODO remove reference to concurrent skiplist

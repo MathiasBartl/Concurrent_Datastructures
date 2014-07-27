@@ -23,9 +23,17 @@
 
 --module Data.HashTables.IO.Placeholder
 module Placeholder 
-	( ConcurrentHashTable, size, isEmpty, containsKey, containsValue, put, putIfAbsent, removeKey, remove, replace , replaceTest, clear, get 
-	, newConcurrentHashTableHint, newConcurrentHashTable)
-
+	( 
+          -- * Creating hash tables
+          ConcurrentHashTable
+	, newConcurrentHashTableHint, newConcurrentHashTable
+          -- * Predicates and properties 
+        , size, isEmpty, containsKey, containsValue
+          -- * Basic reading and writing 
+        , put, putIfAbsent, get 
+          -- * Removing or replacing 
+        , removeKey, remove, replace, replaceTest, clear
+        )
 	where
 
 import GHC.IORef(IORef(IORef), readIORef, newIORef, writeIORef)

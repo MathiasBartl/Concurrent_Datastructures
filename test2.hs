@@ -1,10 +1,14 @@
 
 
-module ConncurentHashmapTests where
+module Main where
 
 import Test.HUnit
 import qualified Placeholder as HT
 
+import Test.Framework (defaultMain)
+import Test.Framework.Providers.HUnit (hUnitTestToTests)
+
+test1 :: Test
 test1 = TestCase ( do ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTable Int Int) 
   		      ise <- HT.isEmpty ht
                       assertBool "Hashtable is empty" ise
@@ -18,5 +22,7 @@ test1 = TestCase ( do ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTab
   		      assertBool "Contains value" cnts
  		      cnts <- HT.containsValue ht 11
  		      assertBool "Doesn't contain value" (not cnts)
- 		      assertBool "should fail" False
-	)
+ 		      assertBool "should fail" False )
+
+main :: IO ()
+main = defaultMain (hUnitTestToTests test1)
