@@ -3,7 +3,7 @@
 module Main where
 
 import Test.HUnit
-import qualified Placeholder as HT
+import qualified Data.Placeholder as HT
 
 import Test.Framework (defaultMain)
 import Test.Framework.Providers.HUnit (hUnitTestToTests)

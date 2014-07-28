@@ -4,7 +4,7 @@ License: GPL-3
 License-file: LICENSE
 --TODO choose a licence/licenses for linking with unfree code
 Author: Mathias Otto Bartl
-Maintainer: mathiasbartl@web.de
+Maintainer: Mathias Bartl <mathiasbartl@web.de>
 Category: Data, Concurrent
 Build-type: Simple
 Cabal-version: >= 1.8
@@ -17,19 +17,22 @@ Synopsis: A lockfree, waitfree concurrent hashtable.
 Description:
 
   A lockfree, waitfree concurrent hashtable.
-  Based on: TODO
+  Based on: 
+  https://github.com/boundary/high-scale-lib/blob/master/src/main/java/org/cliffc/high_scale_lib/NonBlockingHashtable.java
+--TODO further description  
   .
 
 
 Library
-  exposed-modules: Placeholder
+  exposed-modules: Data.Placeholder
   build-depends: atomic-primops >= 0.6.0.5, hashable >= 1.2.2.0, base >=4.0 && <5.0, vector >= 0.10.10.0, either-unwrap >= 1.1
   ghc-options: -O2
 
 Test-Suite test-placeholder
   type: exitcode-stdio-1.0
   main-is: test2.hs
-  hs-source-dirs: ./
+  hs-source-dirs: ./tests/
+  build-depends: concurrent-hashtable
   build-depends: base >=4.0 && <5.0, HUnit >= 1.2.5.2, test-framework >= 0.8, test-framework-hunit >= 0.3, time >= 1.4 , either-unwrap >= 1.1
     , vector >= 0.10.10.0, atomic-primops >= 0.6.0.5, hashable >= 1.2.2.0
 --    , concurrent-skiplist >= 0.1.0.0

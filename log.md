@@ -359,6 +359,17 @@ very easy to understand, as long as you ignore the informal descriptions
 
 # 27.07.2014
  - http://www.haskell.org/haskellwiki/How_to_write_a_Haskell_program#Testing
+
+# 28.07.2014
+ - http://stackoverflow.com/questions/11594983/haskell-module-naming-conventions
+ - http://www.reddit.com/r/haskell/comments/1i0uiq/do_naming_practices_hurt_haskell/
+ - http://en.wikibooks.org/wiki/Haskell/Libraries
+ - http://en.wikibooks.org/wiki/Haskell/Packaging#Libraries
+ - http://www.haskell.org/haskellwiki/Structure_of_a_Haskell_project
+ - https://github.com/rrnewton/concurrent-skiplist/blob/master/concurrent-skiplist/concurrent-skiplist.cabal
+ - https://github.com/rrnewton/concurrent-skiplist/blob/master/concurrent-skiplist/Data/Concurrent/SkipListMap.hs
+ - https://www.kernel.org/pub/software/scm/git/docs/git-add.html
+  want automatic adding
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
@@ -380,3 +391,4 @@ http://www.mpi-sws.org/~turon/reagents.pdf
 www.haskell.org/haskellwiki/Concrete_view
 https://ghc.haskell.org/trac/ghc/wiki/Commentary/PrimOps
 https://github.com/ghc/ghc/blob/master/compiler/prelude/primops.txt.ppte
+http://people.cs.uchicago.edu/~blume/papers/cm-TOPLAS.pdf

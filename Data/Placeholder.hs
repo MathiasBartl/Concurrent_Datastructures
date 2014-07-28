@@ -19,10 +19,16 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -} 
 
+--TODO make Data.Placholder, including moving
+--start with debugshow stub, debugshow slot
+--more infos in the cabal file
+--make assertEqualOrNothing
 
 
---module Data.HashTables.IO.Placeholder
-module Placeholder 
+--something like Data.HashTables.IO.NonBlocking.something
+--               Data.HashTables.IO.Concurrent.NonBlocking.something
+--TODO make list of all Hashtable libraries in haskell and compare
+module Data.Placeholder 
 	( 
           -- * Creating hash tables
           ConcurrentHashTable
@@ -460,7 +466,7 @@ containsValue table val = do let kvsref = kvs table
 --TODO adopt to resize
 
 
---FIXME, always seems to return False
+--TODO search should break off once found
 containsVal :: forall key val. (Eq val) => Kvs key val -> Value val -> IO(Bool)
 containsVal kvs val = do let slts = slots kvs
                          anyM (pred val) slts
@@ -475,7 +481,7 @@ containsVal kvs val = do let slts = slots kvs
 			anyM test v =   V.foldM' g False v 
 				where g :: Bool -> a -> (m Bool)
               			      g akk content = do testresult <- test content
-				                         return $ testresult || akk --question why &&
+				                         return $ testresult || akk
 --TODO adopt to resizing, (by recursivly calling for newkvs) anyway what about primed, I should read that up
 --TODO for this the linearisation point for inputing would be the cas on value even if the cas on key has not be done yet, actually its better to think about this for a while, maybe not export this function for a while
 --TODO no reason anyM should not be inlined
