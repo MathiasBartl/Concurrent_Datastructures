@@ -370,6 +370,10 @@ very easy to understand, as long as you ignore the informal descriptions
  - https://github.com/rrnewton/concurrent-skiplist/blob/master/concurrent-skiplist/Data/Concurrent/SkipListMap.hs
  - https://www.kernel.org/pub/software/scm/git/docs/git-add.html
   want automatic adding
+ - http://stackoverflow.com/questions/8332307/show-for-io-types
+ - https://ghc.haskell.org/trac/haskell-prime/wiki/TypeSynonymInstances
+ - http://stackoverflow.com/questions/13116229/why-does-haskell-not-allow-type-synonyms-when-declaring-class-instances
+ - https://ghc.haskell.org/trac/haskell-prime/wiki/FlexibleInstances
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

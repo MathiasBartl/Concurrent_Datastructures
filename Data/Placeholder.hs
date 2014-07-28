@@ -1,6 +1,10 @@
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances #-} --FIXME only needed for debug code
+{-# LANGUAGE FlexibleInstances #-}    --dito
+
+
 {-
     Concurrent Hashmap - 
     Copyright (C) 2014  Mathias Bartl
@@ -19,12 +23,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -} 
 
---TODO make Data.Placholder, including moving
---start with debugshow stub, debugshow slot
---more infos in the cabal file
---make assertEqualOrNothing
+-- TODO make assertEqualOrNothing
 
 
+
+--TODO Data.HashTables... or Data.Concurrent...
 --something like Data.HashTables.IO.NonBlocking.something
 --               Data.HashTables.IO.Concurrent.NonBlocking.something
 --TODO make list of all Hashtable libraries in haskell and compare
@@ -587,6 +590,47 @@ newKvs size  counter = do let msk = getMask size
 			     return $ Slot keyref valref 
 		
 
+--Debug code --TODO make inclusion conditional with preprocessor or something for DEBUG only
+----------------------------------------------------------------------------------------------------------------------------------------------------
 
+class DebugShow a where
+        debugShow :: a -> IO String
 
+instance (Show k, Show v) => DebugShow (ConcurrentHashTable k v) where
+        debugShow ht = do kvs <- getHeadKvs ht
+                          str <- debugShow kvs 
+                          return $ "ConcurrentHashtable:\n" ++ str
 
+instance (Show k, Show v) => DebugShow (Kvs k v) where
+        debugShow slts = undefined
+
+instance DebugShow Mask where 
+        debugShow mask = undefined
+
+--instance DebugShow SizeCounter where 
+--        debugShow counter = undefined
+
+--instance DebugShow SlotsCounter where 
+--        debugShow counter = undefined
+
+instance DebugShow AtomicCounter where
+        debugShow counter = undefined
+
+instance (Show k, Show v) => DebugShow (Slots k v) where
+        debugShow slts = undefined
+
+instance (Show k, Show v) => DebugShow (Slot k v) where
+        debugShow slt = do key <- readKeySlot slt
+		           val <- readValueSlot slt
+		           return $ "Key:\n" ++ (show key) ++ "\nValue:\n" ++ (show val) ++ "\n"
+
+instance (Show k) => Show (Key k) where --TODO keys get primed
+	show (K key) = "Key: " ++ (show key) 
+	show Kempty  = "Key empty"
+
+instance (Show v) => Show (Value v) where
+	show (V val) = "Value: " ++ (show val)
+	show (Vp val)= "Value (primed): " ++ (show val)
+	show T = "Tombstone"
+	show Tp = "Tombstone (primed)"
+	show S = "Sentinel" 
