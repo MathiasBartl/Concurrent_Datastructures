@@ -43,6 +43,8 @@ test1 = TestCase ( do ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTab
   		      assertBool "Contains value" cnts
  		      cnts <- HT.containsValue ht 11
  		      assertBool "Doesn't contain value" (not cnts)
+		      htstr <-  HT.debugShow ht
+		      putStr htstr
  		
 	)
 

@@ -42,6 +42,9 @@ module Data.Placeholder
         , put, putIfAbsent, get 
           -- * Removing or replacing 
         , removeKey, remove, replace, replaceTest, clear
+
+	  -- * Debuging
+	, debugShow
         )
 	where
 
@@ -53,8 +56,11 @@ import Data.Atomics
 import Control.Exception(assert)
 import Data.Atomics.Counter
 import qualified Data.Vector as V
-import Data.Maybe (isJust, fromJust)
+import Data.Maybe (isJust, isNothing, fromJust)
 import Data.Either.Unwrap (fromLeft, isLeft, isRight, fromRight)
+
+import Numeric (showIntAtBase) --FIXME for debug only
+import Data.Char (intToDigit)       --dito
 
 
 
@@ -595,17 +601,38 @@ newKvs size  counter = do let msk = getMask size
 
 class DebugShow a where
         debugShow :: a -> IO String
-
+--TODO Automatic indentation, ask on Stack Overflow about it.
+--Debug print for the Hashtable
 instance (Show k, Show v) => DebugShow (ConcurrentHashTable k v) where
         debugShow ht = do kvs <- getHeadKvs ht
                           str <- debugShow kvs 
-                          return $ "ConcurrentHashtable:\n" ++ str
+                          return $  "ConcurrentHashtable:\n" ++ str
 
-instance (Show k, Show v) => DebugShow (Kvs k v) where
-        debugShow slts = undefined
+instance forall k v. (Show k, Show v) => DebugShow (Kvs k v) where
+        debugShow kvs = debugshw 0 kvs
+		where debugshw :: Int -> Kvs k v -> IO String
+		      debugshw resizeCounter kvs = do str <- return $ "Kvs number " ++ (show resizeCounter) ++ " \n"
+						      str <- return $ str ++  if isNothing $ newkvs kvs then "Is newest Kvs.\n" else "Is older Kvs.\n" 
+						      maskstr <- debugShow $ mask kvs
+						      str <- return $ str ++ maskstr
+						      str <- return $ str ++ "sizeCounter:\n "
+						      sizeCounterStr <- debugShow $ sizeCounter kvs
+						      str <- return $ str ++ sizeCounterStr
+						      str <- return $ str ++ "slotsCounter:\n "
+						      slotsCounterStr <- debugShow $ slotsCounter kvs
+						      str <- return $ str ++ slotsCounterStr ++ "Slots:\n"
+						      slotsstr <- debugShow $ slots kvs
+						      str <- return $ str ++ slotsstr
+						      newKvsstr <-  if isNothing $ newkvs kvs then return "END.\n" else 
+								do newkvsIORef <- return $ fromJust $ newkvs kvs
+								   nwKvs <- readIORef newkvsIORef
+								   debugShow nwKvs
+						      return $ str ++ newKvsstr
+  							
 
 instance DebugShow Mask where 
-        debugShow mask = undefined
+        debugShow mask = do bitsstr <- return $ showIntAtBase 2 intToDigit mask ""
+			    return $ "Mask: " ++ bitsstr ++ "\n"
 
 --instance DebugShow SizeCounter where 
 --        debugShow counter = undefined
@@ -614,10 +641,15 @@ instance DebugShow Mask where
 --        debugShow counter = undefined
 
 instance DebugShow AtomicCounter where
-        debugShow counter = undefined
-
-instance (Show k, Show v) => DebugShow (Slots k v) where
-        debugShow slts = undefined
+        debugShow counter = do number <- readCounter counter
+			       return $ "Countervalue: " ++ (show number) ++ "\n" 
+--TODO number the slots
+instance forall k v. (Show k, Show v) => DebugShow (Slots k v) where
+        debugShow slts = do str <- return $ "Vector length: " ++ (show $ V.length slts) ++ "\n"
+                            V.foldM' g str slts where
+				g :: String -> Slot k v -> IO String
+				g akk slt = do sltstr <- debugShow slt
+					       return $ akk ++ "Slot:\n" ++sltstr
 
 instance (Show k, Show v) => DebugShow (Slot k v) where
         debugShow slt = do key <- readKeySlot slt

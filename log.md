@@ -374,6 +374,13 @@ very easy to understand, as long as you ignore the informal descriptions
  - https://ghc.haskell.org/trac/haskell-prime/wiki/TypeSynonymInstances
  - http://stackoverflow.com/questions/13116229/why-does-haskell-not-allow-type-synonyms-when-declaring-class-instances
  - https://ghc.haskell.org/trac/haskell-prime/wiki/FlexibleInstances
+
+# 29.07.2014
+ - http://stackoverflow.com/questions/1959715/how-to-print-integer-literals-in-binary-or-hex-in-haskell
+ - http://www.haskell.org/ghc/docs/latest/html/libraries/base/Numeric.html#1
+ - http://stackoverflow.com/questions/9913299/cant-build-cabal-package-due-to-ambiguous-prelude
+ - http://www.haskell.org/pipermail/haskell-cafe/2008-April/041685.html
+ - http://stackoverflow.com/questions/8890471/how-can-i-print-a-newline-properly-in-haskell
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
