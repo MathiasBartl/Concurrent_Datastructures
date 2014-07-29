@@ -28,7 +28,11 @@ tests = TestList [ TestLabel "test1" test1,
  TestLabel "isEmpty" test_isEmpty,
  TestLabel "size" test_size,
  TestLabel "cotainsValue" test_containsValue,
- TestLabel "containsKey" test_containsKey]
+ TestLabel "containsKey" test_containsKey,
+ TestLabel "newConcurrentHashTableHint" test_newConcurrentHashTableHint]
+
+tests_debugcode = TestList [ TestLabel "getNumberOfOngoingResizes" test_debugcode_getNumberOfOngoingResizes
+			   , TestLabel "getLengthsOfVectors" test_debugcode_getLengthsOfVectors]
 
 test1 = TestCase ( do ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTable Int Int) 
   		      ise <- HT.isEmpty ht
@@ -209,12 +213,29 @@ test_containsKey =  TestCase (do ht <- setup
 				 HT.removeKey ht 10
 			         ret <- HT.containsKey ht 10
 				 assertBool "key is deleted" (not ret) )
+
+test_newConcurrentHashTableHint = TestCase (do ht <- (HT.newConcurrentHashTableHint 35)::IO(HT.ConcurrentHashTable Int Int)
+					       lstret <- HT.getLengthsOfVectors ht	
+					       assertEqual "Next highest potency of 2" 64 (head lstret)
+					       ht <- (HT.newConcurrentHashTableHint 128)::IO(HT.ConcurrentHashTable Int Int)
+					       lstret <- HT.getLengthsOfVectors ht	
+					       assertEqual "exact potency of 2" 128 (head lstret))
 				 
 
 
+test_debugcode_getNumberOfOngoingResizes = TestCase (do ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTable Int Int)
+							intret <- HT.getNumberOfOngoingResizes ht
+							assertEqual "Resize not yet implemented" 0 intret)
+
+
+test_debugcode_getLengthsOfVectors = TestCase (do ht <- setup
+					          lstret <- HT.getLengthsOfVectors ht	
+						  assertEqual "Resize not yet implemented" 1 (length lstret)
+						  assertEqual "InitialDefault" 8 (head lstret))
 --TODO testcase for sizecouter
 --TODO testcased for other fuctions when apropriate
 
+--TODO write assertion that resizing grows, or does it
 
 main :: IO ()
-main = defaultMain (hUnitTestToTests test1)
+main = defaultMain ((hUnitTestToTests tests) ++ (hUnitTestToTests tests_debugcode)) --FIXME looks bad

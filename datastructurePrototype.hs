@@ -5,3 +5,7 @@ data State k v =   State {
 				, value :: IORef v
 				, flags
 				}
+
+data key k = { fullHash :: !FullHash
+		, key k
+	}

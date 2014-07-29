@@ -381,6 +381,10 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://stackoverflow.com/questions/9913299/cant-build-cabal-package-due-to-ambiguous-prelude
  - http://www.haskell.org/pipermail/haskell-cafe/2008-April/041685.html
  - http://stackoverflow.com/questions/8890471/how-can-i-print-a-newline-properly-in-haskell
+ - http://en.wikipedia.org/wiki/ARM_architecture
+ - https://code.google.com/p/go/issues/detail?id=7977
+ - https://batterseapower.github.io/test-framework/
+ - https://batterseapower.github.io/test-framework/
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
@@ -403,3 +407,6 @@ www.haskell.org/haskellwiki/Concrete_view
 https://ghc.haskell.org/trac/ghc/wiki/Commentary/PrimOps
 https://github.com/ghc/ghc/blob/master/compiler/prelude/primops.txt.ppte
 http://people.cs.uchicago.edu/~blume/papers/cm-TOPLAS.pdf
+http://www.rdrop.com/users/paulmck/scalability/paper/whymb.2010.07.23a.pdf
+http://mechanical-sympathy.blogspot.de/2011/07/memory-barriersfences.html
+http://www.haskell.org/haskellwiki/Power_function

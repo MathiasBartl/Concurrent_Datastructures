@@ -44,13 +44,13 @@ module Data.Placeholder
         , removeKey, remove, replace, replaceTest, clear
 
 	  -- * Debuging
-	, debugShow
+	, debugShow, getNumberOfOngoingResizes, getLengthsOfVectors
         )
 	where
 
 import GHC.IORef(IORef(IORef), readIORef, newIORef, writeIORef)
 import Data.Hashable(Hashable, hash)
-import Data.Bits((.&.), shiftR) 
+import Data.Bits((.&.), shiftL, shiftR) 
 import Data.Atomics
 --todo restrict and qualify
 import Control.Exception(assert)
@@ -573,11 +573,12 @@ newConcurrentHashTableHint hint = do let size = normSize hint
 --TODO throw error if size <0
 
 -- | Returns the next larger potency of 2
+-- In case inputSize is potency of 2 : identity
 normSize:: Size -> Size
-normSize inputSize = 2 ^ (  max (sizeHelp inputSize 0) min_size_log)
-	where
-		sizeHelp :: Size -> SizeLog -> SizeLog
-		sizeHelp s l = if s==0 then l else sizeHelp (shiftR s 1) (l+1) --TODO fold this
+normSize inputSize = max (2 ^ min_size_log) (sizeHelp inputSize 1)
+	where sizeHelp :: Size -> Size -> Size
+	      sizeHelp input size = if size >= input then size else sizeHelp input (shiftL size 1)	
+--FIXME TODO guard for Integer overun meaning some maximum size has to be set
 
 --size has to be power of 2
 newKvs :: Size -> SizeCounter-> IO(Kvs key val)
@@ -666,3 +667,26 @@ instance (Show v) => Show (Value v) where
 	show T = "Tombstone"
 	show Tp = "Tombstone (primed)"
 	show S = "Sentinel" 
+
+
+-- Hashtable allows for telescopic resizes
+-- returns number of ongoing resizes (number of tables -1)
+getNumberOfOngoingResizes :: ConcurrentHashTable k v-> IO Int
+getNumberOfOngoingResizes ht = do kvs <- getHeadKvs ht
+                                  getNumber kvs
+	where getNumber :: Kvs k v -> IO Int
+              getNumber kvs = if isNothing $ newkvs kvs then return 0 else do nwkvs <- getNextKvs kvs
+									      newkvsNumber <- getNumber nwkvs
+									      return $ 1 + newkvsNumber
+-- Hashtable allows for telescopic resizes
+-- This means Values are stored somewhere in a list of vectors
+-- returns length of every vector starting with the oldest
+getLengthsOfVectors ::ConcurrentHashTable k v-> IO [Int]
+getLengthsOfVectors ht = do kvs <- getHeadKvs ht
+			    getLengths kvs
+	where getLengths :: Kvs k v -> IO [Int]
+              getLengths kvs = do slots <- return $ slots kvs  --FIXME could use let here
+				  lngth <- return $ V.length slots
+			          if not $ hasNextKvs kvs then return $ lngth:[] else do newkvs <- getNextKvs kvs
+									   	         lst <- getLengths newkvs
+									                 return $ lngth:lst 
