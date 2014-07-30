@@ -76,7 +76,11 @@ getMask size = size -1
 --data representation
 ---------------------------------------------------------------------------------------------------------------------------------
 -- Kempty : empty, K : neverchanging key
-data Key key = Kempty | K key deriving (Eq) --TODO make instance of Eq --TODO do keys need to be primed
+--data Key key = Kempty | K key deriving (Eq) --TODO make instance of Eq --TODO do keys need to be primed
+data Key k = Kempty | Key { fullHash :: !FullHash
+		 , keyE :: !k
+		 } 
+
 -- T : empty, tombstone, Tp : tombstone primed, V : value, Vp : value primed --TODO need tobstoes to be primed
 data Value value =  T | Tp |V value | Vp value | S deriving (Eq) --TODO what kind of comparision is used
 
@@ -122,6 +126,32 @@ type Slots key val = V.Vector (Slot key val)
 data ConcurrentHashTable key val = ConcurrentHashTable {	
 		  kvs :: IORef(Kvs key val)
 }
+
+-- functions for keys
+--------------------------------------------------------------------------------------------------------------------------------------------
+
+
+newKey :: Hashable k => k -> Key k
+newKey k = Key (hash k) k
+
+
+getFullHash :: Key k -> FullHash
+getFullHash = fullHash
+
+getKey :: Key k -> Maybe k
+getKey Kempty = Nothing
+getKey (Key h k) = Just k
+
+--compares keys
+keyComp:: Eq key => 
+          Key key -> Key key -> Bool
+keyComp Kempty Kempty = True
+keyComp Kempty _      = False
+keyComp _     Kempty  = False
+keyComp (Key h1 k1) (Key h2 k2) = if h1 == h2 then k1 == k2 else False  
+
+
+
 --------------------------------------------------------------------------------------------------------------------------------------------
 
 -- does not terminate if array is full, and key is not in it
@@ -129,11 +159,11 @@ data ConcurrentHashTable key val = ConcurrentHashTable {
 getSlot :: forall key value . (Hashable key, Eq key) =>  
            Slots key value -> Mask -> key -> IO(Slot key value)
 getSlot slots mask key =  do	let idx = hsh key mask
-                                    newkey = K key 
+                                    newkey = newKey key 
 				slot <- getSlt slots newkey idx mask
 --collision treatment has to be done again on a write should the key cas fail
 				return slot
-		where hsh :: (Hashable key) => key -> Mask -> SlotsIndex
+		where hsh :: (Hashable key) => key -> Mask -> SlotsIndex --TODO_Hash
 		      hsh k m = (hash k)  .&. m
 		      full :: Key key -> Key key -> Bool
 		      full  Kempty _ = False
@@ -160,14 +190,8 @@ unwrapValue (V a) = Just a
 unwrapValue (Vp a) = Just a
 --TODO what if Sentinel
 
---compares keys
-keyComp:: Eq key => 
-          Key key -> Key key -> Bool
-keyComp Kempty Kempty = True
-keyComp Kempty _      = False
-keyComp _     Kempty  = False
-keyComp (K k1) (K k2) = k1 == k2 --TODO eqality on key what about hashes
---TODO does not cover primed keys
+
+
 
 
 --compares the key in a slot with another key
@@ -234,13 +258,13 @@ isKEmpty _ = False
 --see get
 --reading during resize is already imlemented
 get_impl :: (Eq key, Hashable key) => 
-            ConcurrentHashTable key val -> Kvs key val -> key -> FullHash -> IO(Value val)
+            ConcurrentHashTable key val -> Kvs key val -> key -> FullHash -> IO(Value val) --TODO_Hash
 get_impl table kvs key fullhash = do let msk = mask kvs
                                          slts = slots kvs
 				     slt <- getSlot  slts msk key --TODO pass fullhash
 				     k <- readKeySlot slt
 				     v <- readValueSlot slt
-				     if keyComp k ( K key) --TODO are there primed keys
+				     if keyComp k ( newKey key) --TODO are there primed keys
                                         then if isSentinel v  
 						then do return $ assert $ hasNextKvs kvs 
 							newkvs <- getNextKvs kvs
@@ -304,7 +328,7 @@ casValueSlot slt@(Slot ke va) old new = do
 putIfMatch_T ::(Hashable key, Eq key, Eq value) =>
                ConcurrentHashTable key value -> key -> Value value -> ValComp value -> IO ( Value value)
 putIfMatch_T table key putVal expVal = do let kvsref = kvs table
-                                              ky = K key
+                                              ky = newKey key
                                           kv <- readIORef kvsref
                                           putIfMatch kv ky putVal expVal                                   
 
@@ -319,8 +343,8 @@ putIfMatch :: forall key val. (Hashable key, Eq key, Eq val) =>
 putIfMatch kvs key putVal expVal = do
   let msk = mask kvs :: Mask
       slts = slots kvs
-      fullhash = hash k :: FullHash
-      K k = key
+      fullhash = hash k :: FullHash --TODO_HASH
+      Key _ k = key
       idx = maskHash msk fullhash ::SlotsIndex
   --reprobe_cnt <- return 0
   --TODO get highest kvs and test if a resize is running and then get the second highest kvs
@@ -353,12 +377,12 @@ putIfMatch kvs key putVal expVal = do
 											 (reprobectr +1)					
 				-- checks if the key in slt fits or puts the newkey there if thers an empts
 				where helper2 :: Slot key val -> IO Bool
-				      helper2 slt = do (wasEmpty,_) <- casKeySlot slt Kempty (K key)
+				      helper2 slt = do (wasEmpty,_) <- casKeySlot slt Kempty (newKey key)
 						       if wasEmpty then incSlotsCntr else return () 
 --TODO doing a simple check before the expensive cas should not be harmfull, because of the monotonic nature of keys
 						       if wasEmpty then return True else --TODO inc slots counter, inc size counter, except putvalue is a tombstone
 --then ony slotscounter, or do the inc of size counter in the seval
-							 keyCompSlot slt (K key) --simple key compare, TODO use fullhash
+							 keyCompSlot slt (newKey key) --simple key compare, TODO use fullhash
 					--set the value, return old value
 				      setval :: Slot key val -> Value val -> ValComp val -> IO((Bool,Value val)) --TODO define an datatype (Bool,Value val)
 		       		      setval slt newval oldvalcmp = if isRight oldvalcmp then if (fromRight oldvalcmp) ==  MATCH_ANY then match_any slt newval
@@ -551,7 +575,7 @@ get :: (Eq key, Hashable key) =>
        ConcurrentHashTable key val -> key ->  IO( Maybe val)
 get table key = do let fullhash = hash key --TODO use the right hashfunctio here
 		   topkvs <- readIORef $ kvs table            
-		   result <- get_impl table topkvs key fullhash
+		   result <- get_impl table topkvs key fullhash --TODO_HASH
 		   return $ unwrapValue result
 
 
@@ -660,7 +684,7 @@ instance (Show k, Show v) => DebugShow (Slot k v) where
 		           return $ "Key:\n" ++ (show key) ++ "\nValue:\n" ++ (show val) ++ "\n"
 
 instance (Show k) => Show (Key k) where --TODO keys get primed
-	show (K key) = "Key: " ++ (show key) 
+	show (Key h key) = "Key: " ++ (show key)  --TODO show FullHash 
 	show Kempty  = "Key empty"
 
 instance (Show v) => Show (Value v) where
