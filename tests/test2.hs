@@ -8,6 +8,8 @@ import qualified Data.Placeholder as HT
 import Test.Framework (defaultMain)
 import Test.Framework.Providers.HUnit (hUnitTestToTests)
 
+import Data.Bits(shiftL)
+
 setup :: IO ( HT.ConcurrentHashTable Int Int )
 setup = do ht <- HT.newConcurrentHashTable
 	   HT.put ht 10 10
@@ -219,7 +221,19 @@ test_newConcurrentHashTableHint = TestCase (do ht <- (HT.newConcurrentHashTableH
 					       assertEqual "Next highest potency of 2" 64 (head lstret)
 					       ht <- (HT.newConcurrentHashTableHint 128)::IO(HT.ConcurrentHashTable Int Int)
 					       lstret <- HT.getLengthsOfVectors ht	
-					       assertEqual "exact potency of 2" 128 (head lstret))
+					       assertEqual "exact potency of 2" 128 (head lstret)
+					       --tests for Hints smaller than the minimum table size
+					       ht <- (HT.newConcurrentHashTableHint 2)::IO(HT.ConcurrentHashTable Int Int)
+					       lstret <- HT.getLengthsOfVectors ht	
+					       assertEqual "minimum size" 8 (head lstret))
+					       --tests for large Hints
+					       --ATTENTION takes GBs of RAM
+					       --ht <- (HT.newConcurrentHashTableHint (maxBound::Int))::IO(HT.ConcurrentHashTable Int Int)
+					       --lstret <- HT.getLengthsOfVectors ht	
+					       --assertEqual "minimum size" ( shiftL 1 31) (head lstret))
+					       --test failed to complete after allocating 16 GB of ram
+					       --TODO make a high ram usage flag	
+					      
 				 
 
 

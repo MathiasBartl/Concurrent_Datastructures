@@ -385,6 +385,8 @@ very easy to understand, as long as you ignore the informal descriptions
  - https://code.google.com/p/go/issues/detail?id=7977
  - https://batterseapower.github.io/test-framework/
  - https://batterseapower.github.io/test-framework/
+ - https://www.google.com/+/learnmore/hangouts/
+ - http://en.wikipedia.org/wiki/Google_Hangouts
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

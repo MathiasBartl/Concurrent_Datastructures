@@ -67,6 +67,8 @@ import Data.Char (intToDigit)       --dito
 min_size_log = 3
 min_size = 2 ^ min_size_log --must be power of 2, compiler should turn this into a constant
 
+max_size_log = 31
+max_size = 2 ^ 31
 
 getMask:: Size -> Mask
 getMask size = size -1 
@@ -575,9 +577,9 @@ newConcurrentHashTableHint hint = do let size = normSize hint
 -- | Returns the next larger potency of 2
 -- In case inputSize is potency of 2 : identity
 normSize:: Size -> Size
-normSize inputSize = max (2 ^ min_size_log) (sizeHelp inputSize 1)
+normSize inputSize = max min_size (sizeHelp inputSize 1)
 	where sizeHelp :: Size -> Size -> Size
-	      sizeHelp input size = if size >= input then size else sizeHelp input (shiftL size 1)	
+	      sizeHelp input size = if (size >= input) || (size == max_size)  then size else sizeHelp input (shiftL size 1)	
 --FIXME TODO guard for Integer overun meaning some maximum size has to be set
 
 --size has to be power of 2
