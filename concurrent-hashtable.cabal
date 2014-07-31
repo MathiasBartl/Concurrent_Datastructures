@@ -28,7 +28,7 @@ Library
   build-depends: atomic-primops >= 0.6.0.5, hashable >= 1.2.2.0, base >=4.0 && <5.0, vector >= 0.10.10.0, either-unwrap >= 1.1
   ghc-options: -O2
 
-Test-Suite test-placeholder
+Test-Suite test-placeholder-sequential
   type: exitcode-stdio-1.0
   main-is: test2.hs
   hs-source-dirs: ./tests/
@@ -41,6 +41,14 @@ Test-Suite test-placeholder
   -- TODO set HUnit, test-framework, test-framework-hunit, time minimum version number
   -- TODO remove reference to concurrent skiplist
   ghc-options: -O2 -threaded -rtsopts 
+
+Test-Suite test-placeholder-concurrent
+  type: exitcode-stdio-1.0
+  main-is: test3.hs
+  hs-source-dirs: ./tests/
+  build-depends: concurrent-hashtable
+  build-depends: base >=4.0 && <5.0, HUnit >= 1.2.5.2, hashable >= 1.2.2.0
+  ghc-options: -O2 -threaded -rtsopts
 
 Source-Repository head
     Type: git

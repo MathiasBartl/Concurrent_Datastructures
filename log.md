@@ -391,6 +391,11 @@ very easy to understand, as long as you ignore the informal descriptions
 # 30.07.2014
 
  - https://guides.github.com/features/issues/
+
+# 31.07.2014
+ - http://www.haskell.org/haskellwiki/Introduction_to_QuickCheck1
+ - http://www.haskell.org/haskellwiki/Introduction_to_QuickCheck2
+ - https://plus.google.com/u/0/
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

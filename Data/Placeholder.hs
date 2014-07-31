@@ -150,55 +150,20 @@ keyComp Kempty _      = False
 keyComp _     Kempty  = False
 keyComp (Key h1 k1) (Key h2 k2) = if h1 == h2 then k1 == k2 else False  
 
+isKEmpty :: Key key -> Bool
+isKEmpty Kempty = True
+isKEmpty _ = False
 
 
+-- functions for values
 --------------------------------------------------------------------------------------------------------------------------------------------
-
--- does not terminate if array is full, and key is not in it
--- TODO, use fitting hash function
-getSlot :: forall key value . (Hashable key, Eq key) =>  
-           Slots key value -> Mask -> key -> IO(Slot key value)
-getSlot slots mask key =  do	let idx = hsh key mask
-                                    newkey = newKey key 
-				slot <- getSlt slots newkey idx mask
---collision treatment has to be done again on a write should the key cas fail
-				return slot
-		where hsh :: (Hashable key) => key -> Mask -> SlotsIndex --TODO_Hash
-		      hsh k m = (hash k)  .&. m
-		      full :: Key key -> Key key -> Bool
-		      full  Kempty _ = False
-		      full  k1 k2 = not (keyComp k1 k2)
-		      getSlt:: Slots key value -> Key key -> SlotsIndex -> Mask -> IO(Slot key value)
-		      getSlt slots newkey idx mask =
-                        do let slot = (slots V.! idx) :: (Slot key value)
-                           oldkey <- (readKeySlot slot)::IO(Key key)
-                           slot <- (if full oldkey newkey
-                                    then getSlt slots newkey (collision idx mask) mask
-                                    else return slot) :: IO (Slot key value)
-                           return slot --TODO count reprobes 
-
-collision :: SlotsIndex -> Mask -> SlotsIndex
-collision idx mask = (idx +1) .&. mask
-
-maskHash :: Mask -> FullHash -> SlotsIndex
-maskHash mask hsh = hsh .&. mask
-
 unwrapValue :: Value val -> Maybe val
 unwrapValue T = Nothing
 unwrapValue Tp = Nothing
 unwrapValue (V a) = Just a
 unwrapValue (Vp a) = Just a
 --TODO what if Sentinel
-
-
-
-
-
---compares the key in a slot with another key
-keyCompSlot:: Eq key => 
-          Slot key val-> Key key -> IO Bool
-keyCompSlot slot key = do slotkey <- readKeySlot slot
-		          return $ keyComp slotkey key
+--probably best to throw error
 
 --for use by 
 valCompComp :: Eq val =>
@@ -245,11 +210,51 @@ isValue :: Value val -> Bool
 isValue (V _) = True
 isValue _ = False
 
-isKEmpty :: Key key -> Bool
-isKEmpty Kempty = True
-isKEmpty _ = False
-
 --TODO what if primed Tombstone
+--------------------------------------------------------------------------------------------------------------------------------------------
+
+-- does not terminate if array is full, and key is not in it
+-- TODO, use fitting hash function
+getSlot :: forall key value . (Hashable key, Eq key) =>  
+           Slots key value -> Mask -> key -> IO(Slot key value)
+getSlot slots mask key =  do	let idx = hsh key mask
+                                    newkey = newKey key 
+				slot <- getSlt slots newkey idx mask
+--collision treatment has to be done again on a write should the key cas fail
+				return slot
+		where hsh :: (Hashable key) => key -> Mask -> SlotsIndex --TODO_Hash
+		      hsh k m = (hash k)  .&. m
+		      full :: Key key -> Key key -> Bool
+		      full  Kempty _ = False
+		      full  k1 k2 = not (keyComp k1 k2)
+		      getSlt:: Slots key value -> Key key -> SlotsIndex -> Mask -> IO(Slot key value)
+		      getSlt slots newkey idx mask =
+                        do let slot = (slots V.! idx) :: (Slot key value)
+                           oldkey <- (readKeySlot slot)::IO(Key key)
+                           slot <- (if full oldkey newkey
+                                    then getSlt slots newkey (collision idx mask) mask
+                                    else return slot) :: IO (Slot key value)
+                           return slot --TODO count reprobes 
+
+collision :: SlotsIndex -> Mask -> SlotsIndex
+collision idx mask = (idx +1) .&. mask
+
+maskHash :: Mask -> FullHash -> SlotsIndex
+maskHash mask hsh = hsh .&. mask
+
+
+
+
+
+
+
+--compares the key in a slot with another key
+keyCompSlot:: Eq key => 
+          Slot key val-> Key key -> IO Bool
+keyCompSlot slot key = do slotkey <- readKeySlot slot
+		          return $ keyComp slotkey key
+
+
 
 
 
@@ -451,6 +456,8 @@ newSizeCounter = newCounter 0
 --TODO possibly parameter table
 --Exported functions
 
+-- kvs functions
+-----------------------------------------------------------------------------------------------------------------------------------------------------
 --helper to acess first kvs
 getHeadKvs :: ConcurrentHashTable key val -> IO(Kvs key val)
 getHeadKvs table = do let kvsref= kvs table
