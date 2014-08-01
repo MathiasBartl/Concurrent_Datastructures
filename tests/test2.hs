@@ -3,7 +3,7 @@
 module Main where
 
 import Test.HUnit
-import qualified Data.Placeholder as HT
+import qualified Data.LockFreeWaitFreeHashTable  as HT
 
 import Test.Framework (defaultMain)
 import Test.Framework.Providers.HUnit (hUnitTestToTests)
@@ -34,7 +34,8 @@ tests = TestList [ TestLabel "test1" test1,
  TestLabel "newConcurrentHashTableHint" test_newConcurrentHashTableHint]
 
 tests_debugcode = TestList [ TestLabel "getNumberOfOngoingResizes" test_debugcode_getNumberOfOngoingResizes
-			   , TestLabel "getLengthsOfVectors" test_debugcode_getLengthsOfVectors]
+			   , TestLabel "getLengthsOfVectors" test_debugcode_getLengthsOfVectors
+			   , TestLabel "getSlotsCounters"  test_debugcode_getSlotsCounters]
 
 test1 = TestCase ( do ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTable Int Int) 
   		      ise <- HT.isEmpty ht
@@ -97,7 +98,10 @@ test_remove = TestCase ( do ht <- setup
 			    ret <- HT.get ht 10
 			    assertEqual "should return Nothing" Nothing ret
 			    ret <- HT.get ht 11
-			    assertEqual "Value should be unchanged" (Just 11) ret)
+			    assertEqual "Value should be unchanged" (Just 11) ret
+			    )
+			    --ret <- HT.getSlotsCounters ht
+			    --assertEqual "Slotscounter" 3 (head ret))
 
 
 test_removeKey = TestCase ( do ht <- setup
@@ -246,6 +250,21 @@ test_debugcode_getLengthsOfVectors = TestCase (do ht <- setup
 					          lstret <- HT.getLengthsOfVectors ht	
 						  assertEqual "Resize not yet implemented" 1 (length lstret)
 						  assertEqual "InitialDefault" 8 (head lstret))
+
+
+test_debugcode_getSlotsCounters = TestCase (do ht <- setup
+					       ret <- HT.getSlotsCounters ht
+					       assertEqual "SlotsCounter after 3 Inserts" 3 (head ret)	
+					       HT.removeKey ht 10
+					       ret <- HT.getSlotsCounters ht  --TODO factor this out into an seperate Testcase
+					       assertEqual "removal does not reduce the number of Slots in use" 3 (head ret)
+				       	       HT.removeKey ht 20
+					       ret <- HT.getSlotsCounters ht
+					       assertEqual "Using up the slot should be unnecessary" 3 (head ret)
+					       HT.remove ht 21 21
+					       ret <- HT.getSlotsCounters ht
+					       assertEqual "Using up the slot should be unnecessary" 3 (head ret)
+					       )
 --TODO testcase for sizecouter
 --TODO testcased for other fuctions when apropriate
 

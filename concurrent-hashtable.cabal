@@ -24,7 +24,7 @@ Description:
 
 
 Library
-  exposed-modules: Data.Placeholder
+  exposed-modules: Data.LockFreeWaitFreeHashTable
   build-depends: atomic-primops >= 0.6.0.5, hashable >= 1.2.2.0, base >=4.0 && <5.0, vector >= 0.10.10.0, either-unwrap >= 1.1
   ghc-options: -O2
 
@@ -48,6 +48,13 @@ Test-Suite test-placeholder-concurrent
   hs-source-dirs: ./tests/
   build-depends: concurrent-hashtable
   build-depends: base >=4.0 && <5.0, HUnit >= 1.2.5.2, hashable >= 1.2.2.0
+  ghc-options: -O2 -threaded -rtsopts
+
+Benchmark bench-hashtable
+  type: exitcode-stdio-1.0
+  main-is: benchmark1.hs
+  hs-source-dirs: ./tests/
+  build-depends: concurrent-hashtable
   ghc-options: -O2 -threaded -rtsopts
 
 Source-Repository head

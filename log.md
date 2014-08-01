@@ -396,6 +396,7 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://www.haskell.org/haskellwiki/Introduction_to_QuickCheck1
  - http://www.haskell.org/haskellwiki/Introduction_to_QuickCheck2
  - https://plus.google.com/u/0/
+ - http://projects.haskell.org/cpphs/
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

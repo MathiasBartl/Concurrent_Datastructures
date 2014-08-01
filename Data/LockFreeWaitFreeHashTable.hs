@@ -31,7 +31,7 @@
 --something like Data.HashTables.IO.NonBlocking.something
 --               Data.HashTables.IO.Concurrent.NonBlocking.something
 --TODO make list of all Hashtable libraries in haskell and compare
-module Data.Placeholder 
+module Data.LockFreeWaitFreeHashTable 
 	( 
           -- * Creating hash tables
           ConcurrentHashTable
@@ -44,7 +44,7 @@ module Data.Placeholder
         , removeKey, remove, replace, replaceTest, clear
 
 	  -- * Debuging
-	, debugShow, getNumberOfOngoingResizes, getLengthsOfVectors
+	, debugShow, getNumberOfOngoingResizes, getLengthsOfVectors, getSlotsCounters
         )
 	where
 
@@ -58,6 +58,7 @@ import Data.Atomics.Counter
 import qualified Data.Vector as V
 import Data.Maybe (isJust, isNothing, fromJust)
 import Data.Either.Unwrap (fromLeft, isLeft, isRight, fromRight)
+
 
 import Numeric (showIntAtBase) --FIXME for debug only
 import Data.Char (intToDigit)       --dito
@@ -723,3 +724,23 @@ getLengthsOfVectors ht = do kvs <- getHeadKvs ht
 			          if not $ hasNextKvs kvs then return $ lngth:[] else do newkvs <- getNextKvs kvs
 									   	         lst <- getLengths newkvs
 									                 return $ lngth:lst 
+
+
+getSlotsCounters ::ConcurrentHashTable k v-> IO [Int]
+getSlotsCounters ht = mapOnKvs ht readSlotsCounter
+
+countSlotsWithPredicate :: ConcurrentHashTable k v-> (Slot k v -> IO Bool) -> IO [Int]
+countSlotsWithPredicate ht predicate = mapOnKvs ht (countSlots predicate)
+	where countSlots ::(Slot k v -> IO Bool) -> (Kvs k v) -> IO Int
+	      countSlots predicate kvs = do let slts = slots kvs
+					    lst <- V.forM slts predicate
+					    return $ V.foldl (\acc -> \bool -> if bool then acc + 1 else acc + 0) 0 lst  
+
+mapOnKvs :: forall k v a. ConcurrentHashTable k v -> ((Kvs k v) -> IO a) -> IO [a]
+mapOnKvs ht fun = do kvs <- getHeadKvs ht
+		     mapOn kvs
+	where mapOn :: Kvs k v -> IO [a]
+              mapOn kvs = do a <- fun kvs
+			     lst <- if not $ hasNextKvs kvs then return [] else do newKvs <- getNextKvs kvs
+										   mapOn newKvs
+			     return $ a:lst

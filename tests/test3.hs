@@ -5,7 +5,7 @@ module Main where
 
 
 --import Test.HUnit
-import qualified Data.Placeholder as HT
+import qualified Data.LockFreeWaitFreeHashTable  as HT
 
 import Control.Monad (forM_)
 import Data.Hashable
@@ -34,4 +34,4 @@ test ht caseList =  forM_ caseList (h1 ht)
 
 --TODO main method
 main :: IO ()
-main = undefined
+main = return ()
