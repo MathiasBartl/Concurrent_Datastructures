@@ -397,6 +397,17 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://www.haskell.org/haskellwiki/Introduction_to_QuickCheck2
  - https://plus.google.com/u/0/
  - http://projects.haskell.org/cpphs/
+
+# 02.08.2014
+
+ - http://hackage.haskell.org/package/test-framework-0.8.0.3/docs/Test-Framework.html
+ - http://hackage.haskell.org/package/test-framework-0.6/docs/Test-Framework-Runners-Console.html
+ - https://raw.githubusercontent.com/batterseapower/test-framework/master/example/Test/Framework/Example.lhs
+ - www.haskell.org/haskellwiki/Power_function
+ - https://hackage.haskell.org/package/base-4.7.0.0/docs/GHC-Conc.html
+ - https://hackage.haskell.org/package/base-4.7.0.0/docs/Control-Concurrent.html
+ - http://hackage.haskell.org/package/async-2.0.0.0/docs/Control-Concurrent-Async.html
+ - https://hackage.haskell.org/package/base-4.7.0.0/docs/System-Mem-Weak.html#t:Weak
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
@@ -422,3 +433,5 @@ http://people.cs.uchicago.edu/~blume/papers/cm-TOPLAS.pdf
 http://www.rdrop.com/users/paulmck/scalability/paper/whymb.2010.07.23a.pdf
 http://mechanical-sympathy.blogspot.de/2011/07/memory-barriersfences.html
 http://www.haskell.org/haskellwiki/Power_function
+https://hackage.haskell.org/package/base-4.7.0.0/docs/Control-Exception-Base.html
+https://hackage.haskell.org/package/base-4.7.0.0/docs/System-Mem-Weak.html#t:Weak

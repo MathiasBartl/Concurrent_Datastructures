@@ -31,7 +31,8 @@ tests = TestList [ TestLabel "test1" test1,
  TestLabel "size" test_size,
  TestLabel "cotainsValue" test_containsValue,
  TestLabel "containsKey" test_containsKey,
- TestLabel "newConcurrentHashTableHint" test_newConcurrentHashTableHint]
+ TestLabel "newConcurrentHashTableHint" test_newConcurrentHashTableHint,
+ TestLabel "unnecessary_key_writes" test_unnecessary_key_writes]
 
 tests_debugcode = TestList [ TestLabel "getNumberOfOngoingResizes" test_debugcode_getNumberOfOngoingResizes
 			   , TestLabel "getLengthsOfVectors" test_debugcode_getLengthsOfVectors
@@ -241,6 +242,32 @@ test_newConcurrentHashTableHint = TestCase (do ht <- (HT.newConcurrentHashTableH
 				 
 
 
+test_unnecessary_key_writes = TestCase (do ht <- setup
+					   ret <- HT.getSlotsCounters ht
+					   assertEqual "SlotsCounter after 3 Inserts" 3 (head ret)
+	
+					   HT.removeKey ht 10
+					   ret <- HT.getSlotsCounters ht  --TODO factor this out into an seperate Testcase
+					   assertEqual "removal does not reduce the number of Slots in use" 3 (head ret)
+
+				       	   HT.removeKey ht 20
+					   ret <- HT.getSlotsCounters ht
+					   assertEqual "Using up the slot should be unnecessary" 3 (head ret)
+
+					   HT.remove ht 21 21
+					   ret <- HT.getSlotsCounters ht
+					   assertEqual "Using up the slot should be unnecessary" 3 (head ret)
+					   --TODO test al other functions, witch may find an Tombstone and leave it there
+
+					   HT.replace ht 22 22
+					   ret <- HT.getSlotsCounters ht
+					   assertEqual "Using up the slot should be unnecessary" 3 (head ret)
+					   --replaceTest
+					   HT.replaceTest ht 23 24 23
+					   ret <- HT.getSlotsCounters ht
+					   assertEqual "Using up the slot should be unnecessary" 3 (head ret)
+					   )
+
 test_debugcode_getNumberOfOngoingResizes = TestCase (do ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTable Int Int)
 							intret <- HT.getNumberOfOngoingResizes ht
 							assertEqual "Resize not yet implemented" 0 intret)
@@ -258,12 +285,9 @@ test_debugcode_getSlotsCounters = TestCase (do ht <- setup
 					       HT.removeKey ht 10
 					       ret <- HT.getSlotsCounters ht  --TODO factor this out into an seperate Testcase
 					       assertEqual "removal does not reduce the number of Slots in use" 3 (head ret)
-				       	       HT.removeKey ht 20
-					       ret <- HT.getSlotsCounters ht
-					       assertEqual "Using up the slot should be unnecessary" 3 (head ret)
-					       HT.remove ht 21 21
-					       ret <- HT.getSlotsCounters ht
-					       assertEqual "Using up the slot should be unnecessary" 3 (head ret)
+				       	      
+
+					       --TODO compare slotscouter to actuall numberof used slots, possibly by writing an assertion into putIfMatch under the condition that all access is sequential
 					       )
 --TODO testcase for sizecouter
 --TODO testcased for other fuctions when apropriate
