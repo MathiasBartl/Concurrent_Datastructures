@@ -9,6 +9,8 @@ import Test.Framework (defaultMain)
 import Test.Framework.Providers.HUnit (hUnitTestToTests)
 
 import Data.Bits(shiftL)
+import Control.Monad (forM_, replicateM_, forM, replicateM)
+
 
 setup :: IO ( HT.ConcurrentHashTable Int Int )
 setup = do ht <- HT.newConcurrentHashTable
@@ -16,6 +18,12 @@ setup = do ht <- HT.newConcurrentHashTable
 	   HT.put ht 11 11
 	   HT.put ht 12 12
            return ht 
+
+emptySetup :: IO ( HT.ConcurrentHashTable Int Int )
+emptySetup = HT.newConcurrentHashTable
+
+isStrictOrdered xs = and $ zipWith (<) xs (tail xs)
+
 
 tests = TestList [ TestLabel "test1" test1,
  TestLabel "put" test_put,
@@ -37,6 +45,12 @@ tests = TestList [ TestLabel "test1" test1,
 tests_debugcode = TestList [ TestLabel "getNumberOfOngoingResizes" test_debugcode_getNumberOfOngoingResizes
 			   , TestLabel "getLengthsOfVectors" test_debugcode_getLengthsOfVectors
 			   , TestLabel "getSlotsCounters"  test_debugcode_getSlotsCounters]
+
+tests_with_resize = TestList [ TestLabel "resize" test_resize
+			     , TestLabel "multiple_resize" test_multiple_resize
+			     , TestLabel "lotsof_put" test_lotsof_put
+			--     , TestLabel ""
+			     , TestLabel "resize_finishes_lotsof_get_tosame" test_resize_finishes_lotsof_get_tosame]
 
 test1 = TestCase ( do ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTable Int Int) 
   		      ise <- HT.isEmpty ht
@@ -282,17 +296,66 @@ test_debugcode_getLengthsOfVectors = TestCase (do ht <- setup
 test_debugcode_getSlotsCounters = TestCase (do ht <- setup
 					       ret <- HT.getSlotsCounters ht
 					       assertEqual "SlotsCounter after 3 Inserts" 3 (head ret)	
-					       HT.removeKey ht 10
+					       HT.removeKey ht 10 
 					       ret <- HT.getSlotsCounters ht  --TODO factor this out into an seperate Testcase
 					       assertEqual "removal does not reduce the number of Slots in use" 3 (head ret)
 				       	      
 
 					       --TODO compare slotscouter to actuall numberof used slots, possibly by writing an assertion into putIfMatch under the condition that all access is sequential
 					       )
+
+test_resize = TestCase (do ht <- emptySetup
+			   forM_ [0..11] (\i -> HT.put ht i i)
+
+			   ret <- HT.size ht
+			   assertEqual "sizeCounter after resize" 12 ret
+			
+
+			   ret <- HT.getSlotsCounters ht
+			   assertBool "ht has resized" ((last ret) > 8)
+			   )
+
+
+test_multiple_resize = TestCase (do ht <- emptySetup
+				    forM_ [0..35000] (\i -> HT.put ht i i)
+				    ret <- HT.size ht
+				    assertEqual "sizeCounter after resize" 30000001 ret
+				    ret <- HT.getSlotsCounters ht
+				    assertBool "ht has resized" ((last ret) > 8)
+				    assertBool "growns with every resize" (isStrictOrdered ret)
+				    )
+
+
+test_lotsof_put = TestCase ( do ht <- emptySetup
+				forM_ [0..30000000] (\i -> HT.put ht i i)
+
+				ret <- HT.size ht
+				assertEqual "sizeCounter after resize" 30000001 ret
+				
+				ret <- forM [0..30000000] (\i -> HT.get ht i)
+
+				assertEqual "No put left behind on resize" ((map Just) [0..30000000]) ret --TODO does this work
+				)
+
+
+
+
+test_resize_finishes_lotsof_get_tosame = TestCase (do ht <- emptySetup
+				 		      forM_ [0..200] (\i -> HT.put ht i i)
+
+				 		      ret <- HT.size ht
+				 		      assertEqual "sizeCounter after resize" 201 ret
+						      replicateM_ 8000 (HT.get ht 10)
+
+				 		      ret <- HT.getSlotsCounters ht
+				 		      assertBool "ht has resized" ((last ret) > 8)
+				 		      assertEqual "all resizes are finished" 1 (length ret)
+						      )
+
 --TODO testcase for sizecouter
 --TODO testcased for other fuctions when apropriate
 
 --TODO write assertion that resizing grows, or does it
 
 main :: IO ()
-main = defaultMain ((hUnitTestToTests tests) ++ (hUnitTestToTests tests_debugcode)) --FIXME looks bad
+main = defaultMain ((hUnitTestToTests tests) ++ (hUnitTestToTests tests_debugcode) ++ (hUnitTestToTests tests_with_resize)) --FIXME looks bad

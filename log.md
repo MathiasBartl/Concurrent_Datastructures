@@ -408,6 +408,25 @@ very easy to understand, as long as you ignore the informal descriptions
  - https://hackage.haskell.org/package/base-4.7.0.0/docs/Control-Concurrent.html
  - http://hackage.haskell.org/package/async-2.0.0.0/docs/Control-Concurrent-Async.html
  - https://hackage.haskell.org/package/base-4.7.0.0/docs/System-Mem-Weak.html#t:Weak
+
+# 03.08.2014
+
+ - http://www.haskell.org/haskellwiki/QuickCheck_as_a_test_set_generator
+ - http://hackage.haskell.org/package/QuickCheck-2.4.2/docs/Test-QuickCheck.html
+ - http://hackage.haskell.org/package/QuickCheck-2.4.2/docs/Test-QuickCheck-Arbitrary.html
+ - http://hackage.haskell.org/package/QuickCheck-2.4.2/docs/Test-QuickCheck-Gen.html
+ - http://book.realworldhaskell.org/read/testing-and-quality-assurance.html
+
+
+# 05.08.2014
+
+ - https://github.com/junit-team/junit/wiki/Timeout-for-tests
+   need timeout in hunit
+ - http://documentup.com/feuerbach/tasty
+ - http://stackoverflow.com/questions/9964104/haskell-custom-isordered-function-to-check-a-list-of-integers
+ - https://hackage.haskell.org/package/HUnit-1.2.5.2/docs/Test-HUnit-Base.html
+ - https://hackage.haskell.org/package/HUnit-1.2.5.2/docs/Test-HUnit-Terminal.html
+ - https://hackage.haskell.org/package/HUnit-1.2.5.2/docs/Test-HUnit-Text.html
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
@@ -435,3 +454,4 @@ http://mechanical-sympathy.blogspot.de/2011/07/memory-barriersfences.html
 http://www.haskell.org/haskellwiki/Power_function
 https://hackage.haskell.org/package/base-4.7.0.0/docs/Control-Exception-Base.html
 https://hackage.haskell.org/package/base-4.7.0.0/docs/System-Mem-Weak.html#t:Weak
+

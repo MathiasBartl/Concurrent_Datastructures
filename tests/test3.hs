@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-} 
 
 -- puts pairs of keys and values into the table such that key==value and then checks if that is an invariant
 module Main where
@@ -9,7 +11,7 @@ import qualified Data.LockFreeWaitFreeHashTable  as HT
 
 import Control.Concurrent as C
 import Control.Concurrent.Async as A
-import Control.Monad (forM_)
+import Control.Monad (forM_, replicateM)
 import Data.Hashable
 
 import Test.QuickCheck
@@ -51,7 +53,23 @@ h2 ht paramlist = forM_ paramlist (testThread ht)
 
 
 --TODO: testcase generator witch is in IO any case, best probably Quickcheck
+--Instance of arbitrary for HTAction
 
+--Testcase generator
+-------------------------------------------------------------------------------------------------------------------------------------------
+--instance Arbitrary HTActionParam where
+--  arbitrary   = elements range
+
+instance Arbitrary Inout where
+  arbitrary = elements [Put, Get]
+
+--instance Arbitrary HTAction where  --pair is defined in Test.QuickCheck.Arbitrary
+  --arbitrary = do param <- elements range
+	--	 command <- arbitrary
+	--	 return $ (param, command)
+
+instance Arbitrary ThreadParam where
+  arbitrary = replicateM repetition arbitrary
 
 --TODO main method
 main :: IO ()
