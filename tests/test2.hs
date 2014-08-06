@@ -35,14 +35,14 @@ tests = TestList [ TestLabel "test1" test1,
  TestLabel "put to erased slot"  test_put_to_erased_slot,
  TestLabel "get"  test_get,
  TestLabel "putIfAbsent" test_putIfAbsent,
- TestLabel "reove" test_remove,
+ TestLabel "remove" test_remove,
  TestLabel "removeKey" test_removeKey,
  TestLabel "replace" test_replace,
  TestLabel "replaceTest" test_replaceTest,
  TestLabel "clear" test_clear,
  TestLabel "isEmpty" test_isEmpty,
  TestLabel "size" test_size,
- TestLabel "cotainsValue" test_containsValue,
+ TestLabel "containsValue" test_containsValue,
  TestLabel "containsKey" test_containsKey,
  TestLabel "newConcurrentHashTableHint" test_newConcurrentHashTableHint,
  TestLabel "unnecessary_key_writes" test_unnecessary_key_writes]
@@ -374,4 +374,4 @@ assertSlotsCountersMatchUsedSlots ht = do counters <- HT.getSlotsCounters ht
 					  assertEqual "Slotcounters match used slots" actuallyUsed counters
 
 main :: IO ()
-main = defaultMain ((hUnitTestToTests tests) ++ (hUnitTestToTests tests_debugcode) ++ (map (plusTestOptions timelimit) (hUnitTestToTests tests_with_resize))) --FIXME looks bad
+main = defaultMain ((map (plusTestOptions timelimit)(hUnitTestToTests tests)) ++ (map (plusTestOptions timelimit) (hUnitTestToTests tests_debugcode)) ++ (map (plusTestOptions timelimit) (hUnitTestToTests tests_with_resize))) --FIXME looks bad
