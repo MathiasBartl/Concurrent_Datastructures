@@ -16,14 +16,16 @@ import Data.Hashable
 
 import Test.QuickCheck
 import Test.HUnit
-import Test.Framework (defaultMain)
+import Test.Framework (defaultMain, plusTestOptions)
 import Test.Framework.Providers.HUnit (hUnitTestToTests)
+import Test.Framework.Options ( TestOptions, TestOptions'(TestOptions), TestOptions')
 
 hint = 2 ^ 13
 range = [0..(2^12)]
 repetition = 2^36
 numberOfThreads = 32
 
+timelimit = TestOptions Nothing Nothing Nothing Nothing Nothing (Just (Just 60000))
 
 data Inout = Put | Get
 
@@ -104,4 +106,4 @@ tests = TestList [ TestLabel "lotsof_put" test_lotsof_put]
 
 --TODO main method
 main :: IO ()
-main = defaultMain (hUnitTestToTests tests)
+main = defaultMain (map (plusTestOptions timelimit) (hUnitTestToTests tests))

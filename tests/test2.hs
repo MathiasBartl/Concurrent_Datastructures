@@ -6,7 +6,7 @@ import Test.HUnit
 import qualified Data.LockFreeWaitFreeHashTable  as HT
 
 import Test.Framework (defaultMain, plusTestOptions)
-import Test.Framework.Options ( TestOptions, TestOptions(TestOptions), TestOptions')
+import Test.Framework.Options ( TestOptions, TestOptions'(TestOptions), TestOptions')
 import Test.Framework.Providers.HUnit (hUnitTestToTests)
 
 import Data.Monoid (mempty)
