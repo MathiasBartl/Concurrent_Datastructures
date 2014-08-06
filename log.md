@@ -427,6 +427,14 @@ very easy to understand, as long as you ignore the informal descriptions
  - https://hackage.haskell.org/package/HUnit-1.2.5.2/docs/Test-HUnit-Base.html
  - https://hackage.haskell.org/package/HUnit-1.2.5.2/docs/Test-HUnit-Terminal.html
  - https://hackage.haskell.org/package/HUnit-1.2.5.2/docs/Test-HUnit-Text.html
+ - http://www.haskell.org/haskellwiki/Haskell_program_coverage
+
+# 06.08.2014
+ - https://hackage.haskell.org/package/test-framework-0.8.0.3/docs/Test-Framework-Options.html
+   ah theres the timeout
+ - http://hackage.haskell.org/package/test-framework-hunit-0.2.4/docs/Test-Framework-Providers-HUnit.html
+ - https://hackage.haskell.org/package/test-framework-0.8.0.3/docs/src/Test-Framework-Options.html
+   figure that out
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

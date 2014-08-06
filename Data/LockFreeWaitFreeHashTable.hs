@@ -44,7 +44,7 @@ module Data.LockFreeWaitFreeHashTable
         , removeKey, remove, replace, replaceTest, clear
 
 	  -- * Debuging
-	, debugShow, getNumberOfOngoingResizes, getLengthsOfVectors, getSlotsCounters
+	, debugShow, getNumberOfOngoingResizes, getLengthsOfVectors, getSlotsCounters, countUsedSlots
         )
 	where
 
@@ -257,8 +257,9 @@ keyCompSlot slot key = do slotkey <- readKeySlot slot
 
 
 
-
-
+isKEmptySlot :: Slot key val -> IO Bool
+isKEmptySlot slot = do slotkey <- readKeySlot slot
+		       return $ isKEmpty slotkey
 
 
 --see get
@@ -728,6 +729,9 @@ getLengthsOfVectors ht = do kvs <- getHeadKvs ht
 
 getSlotsCounters ::ConcurrentHashTable k v-> IO [Int]
 getSlotsCounters ht = mapOnKvs ht readSlotsCounter
+
+countUsedSlots :: ConcurrentHashTable k v ->  IO [Int]
+countUsedSlots ht = countSlotsWithPredicate ht (\s -> fmap not (isKEmptySlot s) ) --TODO use point combinator
 
 countSlotsWithPredicate :: ConcurrentHashTable k v-> (Slot k v -> IO Bool) -> IO [Int]
 countSlotsWithPredicate ht predicate = mapOnKvs ht (countSlots predicate)

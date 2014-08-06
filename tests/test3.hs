@@ -11,10 +11,13 @@ import qualified Data.LockFreeWaitFreeHashTable  as HT
 
 import Control.Concurrent as C
 import Control.Concurrent.Async as A
-import Control.Monad (forM_, replicateM)
+import Control.Monad (forM_, forM, replicateM)
 import Data.Hashable
 
 import Test.QuickCheck
+import Test.HUnit
+import Test.Framework (defaultMain)
+import Test.Framework.Providers.HUnit (hUnitTestToTests)
 
 hint = 2 ^ 13
 range = [0..(2^12)]
@@ -42,11 +45,11 @@ h1 ht (kv, Put) = do ret <- HT.put ht kv kv
 ht ht (kv, Get) = do ret <- HT.get ht kv 
 		     if fits ret kv then return () else undefined --TODO undefied is not pass
 
-test :: (Eq keyval, Hashable keyval) => HT.ConcurrentHashTable keyval keyval -> [(keyval, Inout)] -> IO ()
-test ht caseList =  forM_ caseList (h1 ht) 
+test1 :: (Eq keyval, Hashable keyval) => HT.ConcurrentHashTable keyval keyval -> [(keyval, Inout)] -> IO ()
+test1 ht caseList =  forM_ caseList (h1 ht) 
 
 testThread :: (Eq keyval, Hashable keyval) => HT.ConcurrentHashTable keyval keyval -> [(keyval, Inout)] -> IO ()
-testThread ht param = withAsync (test ht param) undefined 
+testThread ht param = withAsync (test1 ht param) (\async -> return ()) 
 
 h2 :: HT.ConcurrentHashTable HTActionParam HTActionParam -> [ThreadParam] -> IO ()
 h2 ht paramlist = forM_ paramlist (testThread ht)
@@ -71,6 +74,34 @@ instance Arbitrary Inout where
 instance Arbitrary ThreadParam where
   arbitrary = replicateM repetition arbitrary
 
+
+--------------------------------------------------------------------------------------------------------------------------------------
+--todo lots of puts
+
+emptySetup :: IO ( HT.ConcurrentHashTable Int Int )
+emptySetup = HT.newConcurrentHashTable
+
+test_lotsof_put = TestCase ( do let numberOfThreads = 128
+				    valuesPerThread = 10000000 
+				ht <- emptySetup
+				forM_ [0..(numberOfThreads-1)] 
+					(\number -> withAsync (lotsof_put ht 
+					[(0 + (valuesPerThread*number))..(valuesPerThread-1 + (valuesPerThread*number))])
+					(\async -> do myblst <- wait async 
+					              assertEqual "no puts forgotten during resize" 
+							(map Just [(0 + (valuesPerThread*number))..(valuesPerThread-1 + (valuesPerThread*number))])
+							myblst))
+				)
+
+
+lotsof_put :: ( HT.ConcurrentHashTable Int Int ) -> [Int] -> IO [Maybe Int]
+lotsof_put ht inp = do forM_ inp (\int -> HT.put ht int int)
+		       forM inp (\int -> HT.get ht int)
+
+
+
+tests = TestList [ TestLabel "lotsof_put" test_lotsof_put]
+
 --TODO main method
 main :: IO ()
-main = return ()
+main = defaultMain (hUnitTestToTests tests)

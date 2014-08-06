@@ -5,8 +5,11 @@ module Main where
 import Test.HUnit
 import qualified Data.LockFreeWaitFreeHashTable  as HT
 
-import Test.Framework (defaultMain)
+import Test.Framework (defaultMain, plusTestOptions)
+import Test.Framework.Options ( TestOptions, TestOptions(TestOptions), TestOptions')
 import Test.Framework.Providers.HUnit (hUnitTestToTests)
+
+import Data.Monoid (mempty)
 
 import Data.Bits(shiftL)
 import Control.Monad (forM_, replicateM_, forM, replicateM)
@@ -24,6 +27,8 @@ emptySetup = HT.newConcurrentHashTable
 
 isStrictOrdered xs = and $ zipWith (<) xs (tail xs)
 
+--timelimit :: TestOptions
+timelimit = TestOptions Nothing Nothing Nothing Nothing Nothing (Just (Just 60000))
 
 tests = TestList [ TestLabel "test1" test1,
  TestLabel "put" test_put,
@@ -167,7 +172,8 @@ test_clear = TestCase ( do ht <- setup
 			   ret <- HT.isEmpty ht
 			   assertBool "Empty ht" ret
 			   ret <- HT.get ht 10
-			   assertEqual "get from empty table" Nothing ret )
+			   assertEqual "get from empty table" Nothing ret 
+			   assertSlotsCountersMatchUsedSlots ht)
 
 
 test_put_to_erased_slot = TestCase ( do ht <- setup
@@ -175,7 +181,9 @@ test_put_to_erased_slot = TestCase ( do ht <- setup
 					ret <- HT.put ht 10 10
 					assertEqual "put into empty slot" Nothing ret
 					ret <- HT.get ht 10
-					assertEqual "new value" (Just 10) ret)
+					assertEqual "new value" (Just 10) ret
+				        assertSlotsCountersMatchUsedSlots ht
+			                )
 
 test_isEmpty = TestCase ( do ht <- setup
 			     ret <- HT.isEmpty ht
@@ -280,6 +288,8 @@ test_unnecessary_key_writes = TestCase (do ht <- setup
 					   HT.replaceTest ht 23 24 23
 					   ret <- HT.getSlotsCounters ht
 					   assertEqual "Using up the slot should be unnecessary" 3 (head ret)
+
+					   assertSlotsCountersMatchUsedSlots ht
 					   )
 
 test_debugcode_getNumberOfOngoingResizes = TestCase (do ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTable Int Int)
@@ -299,7 +309,7 @@ test_debugcode_getSlotsCounters = TestCase (do ht <- setup
 					       HT.removeKey ht 10 
 					       ret <- HT.getSlotsCounters ht  --TODO factor this out into an seperate Testcase
 					       assertEqual "removal does not reduce the number of Slots in use" 3 (head ret)
-				       	      
+				       	       assertSlotsCountersMatchUsedSlots ht
 
 					       --TODO compare slotscouter to actuall numberof used slots, possibly by writing an assertion into putIfMatch under the condition that all access is sequential
 					       )
@@ -357,5 +367,11 @@ test_resize_finishes_lotsof_get_tosame = TestCase (do ht <- emptySetup
 
 --TODO write assertion that resizing grows, or does it
 
+--checks if the slots counters fits the number of used slots, may fail spuriously, if ht is used concurrently due ton non-atomicy of keywrite+slotscounter increase
+assertSlotsCountersMatchUsedSlots :: HT.ConcurrentHashTable key val -> Assertion
+assertSlotsCountersMatchUsedSlots ht = do counters <- HT.getSlotsCounters ht
+					  actuallyUsed <- HT.countUsedSlots ht
+					  assertEqual "Slotcounters match used slots" actuallyUsed counters
+
 main :: IO ()
-main = defaultMain ((hUnitTestToTests tests) ++ (hUnitTestToTests tests_debugcode) ++ (hUnitTestToTests tests_with_resize)) --FIXME looks bad
+main = defaultMain ((hUnitTestToTests tests) ++ (hUnitTestToTests tests_debugcode) ++ (map (plusTestOptions timelimit) (hUnitTestToTests tests_with_resize))) --FIXME looks bad
