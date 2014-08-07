@@ -316,7 +316,7 @@ casValueSlot :: forall key value. (Eq value) =>
 	        (Slot key value) -> Value value -> Value value -> IO ( Bool, Value value )
 casValueSlot slt@(Slot ke va) old new = do
 				sltold <- readIORef va
-				if not (valComp sltold old)  then return (False, sltold)
+				if not (valComp sltold old)  then return (False, sltold) --TODO what happens here writte a detailed description of how this concurretly works and better make some tests to break it
 				   else do oldref <- return va
 					   newref <- (newIORef new)::IO(IORef (Value value))
 					   oldticket <- (readForCAS oldref) ::IO(Ticket(Value value))
@@ -327,9 +327,33 @@ casValueSlot slt@(Slot ke va) old new = do
 
 --setValueSlot :: forall key value. (Slot key value) -> Value value -> Value value -> IO ( Bool )
 
+casRemovePrime ::(Eq value) =>
+	         (Slot key value) -> IO (Bool)
+casRemovePrime slt@(Slot ke va) = undefined
+               --get a reference to the value, --what about tickets
+               -- if not a prime, then write has already happend -> end
+               -- else contruct an unprimed value, and a reference to it
+               -- cas that agaist the original reference if failed because somebody already wrote an value then ->end
+		--if failed because of congestion what then
+--question do the cas fail because of congestion
+            
 
 
-
+--resizes stuff
+-----------------------------------------------------------------------------------------------------------------------
+--TODO, what happens to the slotscounter of the old kvs, how does the program know, that the old kvs has been completely copied
+copyOnePair :: Slot key value -> Kvs key value -> IO () 
+copyOnePair = undefined
+-- removes the oldest kvs from the ht
+--throws error, if there is no resize in progress and thus only one kvs
+--some other routine has to determine that the oldest kvs is completly copied, and that the routine is not called multiple times for the same kvs
+-- maybe there has to be an cas used 
+removeOldestKvs :: ConcurrentHashTable key val -> IO ()
+removeOldestKvs ht = do let htKvsRef = kvs ht
+			oldestKvs <- getHeadKvs ht
+			secondOldestKvs <- getNextKvs oldestKvs   --throws error, if no resize is in progress        
+			writeIORef htKvsRef secondOldestKvs
+			--oldestKvs will be GCted, one could explicitly destroy oldestKvs here
 -------------------------------------------------------------------------------------------------------------------------
 
 putIfMatch_T ::(Hashable key, Eq key, Eq value) =>
@@ -748,3 +772,8 @@ mapOnKvs ht fun = do kvs <- getHeadKvs ht
 			     lst <- if not $ hasNextKvs kvs then return [] else do newKvs <- getNextKvs kvs
 										   mapOn newKvs
 			     return $ a:lst
+
+
+--todo generate arbitrary hashtables
+
+

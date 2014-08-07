@@ -435,6 +435,7 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://hackage.haskell.org/package/test-framework-hunit-0.2.4/docs/Test-Framework-Providers-HUnit.html
  - https://hackage.haskell.org/package/test-framework-0.8.0.3/docs/src/Test-Framework-Options.html
    figure that out
+ - http://git-scm.com/book/en/Customizing-Git-Git-Configuration
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
