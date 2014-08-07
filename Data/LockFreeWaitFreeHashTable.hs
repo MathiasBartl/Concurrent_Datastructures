@@ -293,6 +293,11 @@ readKeySlot state = readIORef ( key state  )
 		
 readValueSlot:: Slot key value -> IO (Value value)
 readValueSlot state = readIORef ( value state  )
+
+readSlot :: Slot key value -> IO (Key key, Value value)
+readSlot slt = do key <- readKeySlot slt
+		  value <- readValueSlot slt
+		  return (key, value)
 	
 
 --TODO compare means pointer equality, so get this fixed
@@ -327,9 +332,8 @@ casValueSlot slt@(Slot ke va) old new = do
 
 --setValueSlot :: forall key value. (Slot key value) -> Value value -> Value value -> IO ( Bool )
 
-casRemovePrime ::(Eq value) =>
-	         (Slot key value) -> IO (Bool)
-casRemovePrime slt@(Slot ke va) = undefined
+casStripPrime :: (Slot key value) -> IO ()
+casStripPrime slt@(Slot ke va) = undefined
                --get a reference to the value, --what about tickets
                -- if not a prime, then write has already happend -> end
                -- else contruct an unprimed value, and a reference to it
@@ -343,7 +347,20 @@ casRemovePrime slt@(Slot ke va) = undefined
 -----------------------------------------------------------------------------------------------------------------------
 --TODO, what happens to the slotscounter of the old kvs, how does the program know, that the old kvs has been completely copied
 copyOnePair :: Slot key value -> Kvs key value -> IO () 
-copyOnePair = undefined
+copyOnePair slt newkvs = do undefined -- TODO read Slot --TODO should there be any assert special case threatment, or should these be in a wraper
+			    (oldkey, oldvalue) <- readSlot slt --TODO no Key here -> nothing to copy
+			    --TODO Tombstone no need to copy, but best to cas a sentinel
+			    (casNewSuccess, newSlot) <- putAndReturnSlot oldkey oldvalue newkvs  -- the slot on the newkvs where the primed value has been put)
+			    if casNewSuccess then do  casSsuccess <- undefined 
+		            			      if casSsuccess then do fence 
+						                             casStripPrime newSlot
+							else undefined
+				else undefined
+	where fence = undefined
+	      putAndReturnSlot :: Key key -> Value value -> Kvs key value -> IO (Bool, Slot key value)
+	      putAndReturnSlot key val kvs = undefined
+    
+
 -- removes the oldest kvs from the ht
 --throws error, if there is no resize in progress and thus only one kvs
 --some other routine has to determine that the oldest kvs is completly copied, and that the routine is not called multiple times for the same kvs
