@@ -14,7 +14,10 @@ import Control.Concurrent.Async as A
 import Control.Monad (forM_, forM, replicateM)
 import Data.Hashable
 
-import Test.QuickCheck
+import Test.QuickCheck as QC
+import Test.QuickCheck.Monadic
+import Test.Framework.Providers.API as PAPI
+import Test.Framework.Providers.QuickCheck as  PQC
 import Test.HUnit
 import Test.Framework (defaultMain, plusTestOptions)
 import Test.Framework.Providers.HUnit (hUnitTestToTests)
@@ -57,6 +60,15 @@ h2 :: HT.ConcurrentHashTable HTActionParam HTActionParam -> [ThreadParam] -> IO 
 h2 ht paramlist = forM_ paramlist (testThread ht)
 
 
+prop1 ::  [ThreadParam] -> PropertyM IO ()
+prop1 paramlist = do undefined
+
+
+testable1 = undefined
+
+--test2 :: (Test.QuickCheck.Testable
+--             testable) => testable ->  PAPI.Test --TODO witch type
+test2 t = PQC.testProperty "test_consistency_without_resize" t
 --TODO: testcase generator witch is in IO any case, best probably Quickcheck
 --Instance of arbitrary for HTAction
 
@@ -73,9 +85,13 @@ instance Arbitrary Inout where
 	--	 command <- arbitrary
 	--	 return $ (param, command)
 
+--todo limit ht action to rang
+
 instance Arbitrary ThreadParam where
   arbitrary = replicateM repetition arbitrary
 
+instance Arbitrary [ThreadParam] where
+  arbitrary = undefined
 
 --------------------------------------------------------------------------------------------------------------------------------------
 --todo lots of puts
@@ -106,4 +122,4 @@ tests = TestList [ TestLabel "lotsof_put" test_lotsof_put]
 
 --TODO main method
 main :: IO ()
-main = defaultMain (map (plusTestOptions timelimit) (hUnitTestToTests tests))
+main = defaultMain $ (map (plusTestOptions timelimit) (hUnitTestToTests tests)) -- ++ [test2 testable1] --TODO

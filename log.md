@@ -436,6 +436,12 @@ very easy to understand, as long as you ignore the informal descriptions
  - https://hackage.haskell.org/package/test-framework-0.8.0.3/docs/src/Test-Framework-Options.html
    figure that out
  - http://git-scm.com/book/en/Customizing-Git-Git-Configuration
+
+# 08.08.2014
+
+ - http://stackoverflow.com/questions/2259926/testing-io-actions-with-monadic-quickcheck
+ - http://hackage.haskell.org/package/QuickCheck-2.1.0.2/docs/Test-QuickCheck-Monadic.html
+ http://hackage.haskell.org/package/test-framework-quickcheck-0.3.0/docs/Test-Framework-Providers-QuickCheck.html
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
