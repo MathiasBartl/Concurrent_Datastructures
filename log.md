@@ -441,7 +441,10 @@ very easy to understand, as long as you ignore the informal descriptions
 
  - http://stackoverflow.com/questions/2259926/testing-io-actions-with-monadic-quickcheck
  - http://hackage.haskell.org/package/QuickCheck-2.1.0.2/docs/Test-QuickCheck-Monadic.html
- http://hackage.haskell.org/package/test-framework-quickcheck-0.3.0/docs/Test-Framework-Providers-QuickCheck.html
+ - http://hackage.haskell.org/package/test-framework-quickcheck-0.3.0/docs/Test-Framework-Providers-QuickCheck.html
+ - http://hackage.haskell.org/package/QuickCheck-2.4.2/docs/Test-QuickCheck.html
+ - http://www.haskell.org/ghc/docs/7.0.4/html/users_guide/type-class-extensions.html
+ - https://groups.google.com/forum/#!topic/haskell-cafe/9odPuItN380
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

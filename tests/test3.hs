@@ -15,8 +15,9 @@ import Control.Monad (forM_, forM, replicateM)
 import Data.Hashable
 
 import Test.QuickCheck as QC
-import Test.QuickCheck.Monadic
+import Test.QuickCheck.Monadic as QCM
 import Test.Framework.Providers.API as PAPI
+import Test.QuickCheck.Arbitrary as QCA
 import Test.Framework.Providers.QuickCheck as  PQC
 import Test.HUnit
 import Test.Framework (defaultMain, plusTestOptions)
@@ -27,6 +28,9 @@ hint = 2 ^ 13
 range = [0..(2^12)]
 repetition = 2^36
 numberOfThreads = 32
+
+emptySetup :: IO ( HT.ConcurrentHashTable Int Int )
+emptySetup = HT.newConcurrentHashTable
 
 timelimit = TestOptions Nothing Nothing Nothing Nothing Nothing (Just (Just 60000))
 
@@ -60,15 +64,19 @@ h2 :: HT.ConcurrentHashTable HTActionParam HTActionParam -> [ThreadParam] -> IO 
 h2 ht paramlist = forM_ paramlist (testThread ht)
 
 
-prop1 ::  [ThreadParam] -> PropertyM IO ()
-prop1 paramlist = do undefined
+prop1 ::  [ThreadParam] -> QCM.PropertyM IO ()  
+prop1 params = QCM.wp  emptySetup (\ht -> QCM.run $ h2 ht params )
 
+prop2 :: [ThreadParam] -> QC.Property
+prop2  params = QCM.monadicIO $ prop1 params  
 
 testable1 = undefined
 
 --test2 :: (Test.QuickCheck.Testable
 --             testable) => testable ->  PAPI.Test --TODO witch type
-test2 t = PQC.testProperty "test_consistency_without_resize" t
+--test2 t = PQC.testProperty "test_consistency_without_resize" t
+test2 :: PAPI.Test
+test2 = PQC.testProperty "test_consistency_without_resize" prop2
 --TODO: testcase generator witch is in IO any case, best probably Quickcheck
 --Instance of arbitrary for HTAction
 
@@ -91,13 +99,12 @@ instance Arbitrary ThreadParam where
   arbitrary = replicateM repetition arbitrary
 
 instance Arbitrary [ThreadParam] where
-  arbitrary = undefined
+  arbitrary = QCA.vector numberOfThreads
 
 --------------------------------------------------------------------------------------------------------------------------------------
---todo lots of puts
 
-emptySetup :: IO ( HT.ConcurrentHashTable Int Int )
-emptySetup = HT.newConcurrentHashTable
+
+
 
 test_lotsof_put = TestCase ( do let numberOfThreads = 128
 				    valuesPerThread = 10000000 
