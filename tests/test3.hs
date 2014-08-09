@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-} 
+{-# LANGUAGEGeneralizedNewtypeDeriving #-}
 
 -- puts pairs of keys and values into the table such that key==value and then checks if that is an invariant
 module Main where
@@ -29,18 +30,25 @@ range = [0..(2^12)]
 repetition = 2^36
 numberOfThreads = 32
 
-emptySetup :: IO ( HT.ConcurrentHashTable Int Int )
+emptySetup :: IO ( HT.ConcurrentHashTable HTActionParam HTActionParam )
 emptySetup = HT.newConcurrentHashTable
+
+emptySetupInt :: IO ( HT.ConcurrentHashTable Int Int )
+emptySetupInt = HT.newConcurrentHashTable
 
 timelimit = TestOptions Nothing Nothing Nothing Nothing Nothing (Just (Just 60000))
 
 data Inout = Put | Get
 
-type HTActionParam = Int
+newtype HTActionParam = HTActionParam Int deriving (Eq)
 
-type HTAction = (HTActionParam, Inout)
+instance Hashable HTActionParam where
+	hashWithSalt s (HTActionParam i) = hashWithSalt s i
+	hash (HTActionParam i) = hash i
 
-type ThreadParam = [HTAction]
+newtype HTAction = HTAction (HTActionParam, Inout)
+
+newtype ThreadParam = ThreadParam [HTAction]
 
 
 
@@ -48,16 +56,16 @@ fits :: Eq keyval => Maybe keyval -> keyval -> Bool --TODO differet returntype
 fits Nothing _ = True
 fits (Just kv1) kv2 = kv1 == kv2
 
-h1:: (Eq keyval, Hashable keyval) => HT.ConcurrentHashTable keyval keyval -> (keyval, Inout) -> IO ()--TODO throw something
-h1 ht (kv, Put) = do ret <- HT.put ht kv kv
-		     if fits ret kv then return () else undefined --TODO undefied is not pass
-ht ht (kv, Get) = do ret <- HT.get ht kv 
-		     if fits ret kv then return () else undefined --TODO undefied is not pass
+h1:: HT.ConcurrentHashTable HTActionParam HTActionParam -> HTAction -> IO ()--TODO throw something
+h1 ht (HTAction (kv, Put)) = do ret <- HT.put ht kv kv
+		     		if fits ret kv then return () else undefined --TODO undefied is not pass
+ht ht (HTAction (kv, Get)) = do ret <- HT.get ht kv 
+		     		if fits ret kv then return () else undefined --TODO undefied is not pass
 
-test1 :: (Eq keyval, Hashable keyval) => HT.ConcurrentHashTable keyval keyval -> [(keyval, Inout)] -> IO ()
-test1 ht caseList =  forM_ caseList (h1 ht) 
+test1 :: HT.ConcurrentHashTable HTActionParam HTActionParam -> ThreadParam -> IO ()
+test1 ht (ThreadParam caseList) =  forM_ caseList (h1 ht) 
 
-testThread :: (Eq keyval, Hashable keyval) => HT.ConcurrentHashTable keyval keyval -> [(keyval, Inout)] -> IO ()
+testThread ::  HT.ConcurrentHashTable HTActionParam HTActionParam -> ThreadParam -> IO ()
 testThread ht param = withAsync (test1 ht param) (\async -> return ()) 
 
 h2 :: HT.ConcurrentHashTable HTActionParam HTActionParam -> [ThreadParam] -> IO ()
@@ -82,23 +90,25 @@ test2 = PQC.testProperty "test_consistency_without_resize" prop2
 
 --Testcase generator
 -------------------------------------------------------------------------------------------------------------------------------------------
---instance Arbitrary HTActionParam where
---  arbitrary   = elements range
+instance Arbitrary HTActionParam where
+  arbitrary   = do i <- elements range
+		   return $ HTActionParam i
 
 instance Arbitrary Inout where
   arbitrary = elements [Put, Get]
 
---instance Arbitrary HTAction where  --pair is defined in Test.QuickCheck.Arbitrary
-  --arbitrary = do param <- elements range
-	--	 command <- arbitrary
-	--	 return $ (param, command)
+instance Arbitrary HTAction where  
+  arbitrary = do param <- arbitrary
+		 command <- arbitrary
+		 return $ HTAction (param, command)
 
 --todo limit ht action to rang
 
-instance Arbitrary ThreadParam where
-  arbitrary = replicateM repetition arbitrary
+instance QCA.Arbitrary ThreadParam where
+  arbitrary = do vec <- QCA.vector repetition
+                 return $ ThreadParam vec
 
-instance Arbitrary [ThreadParam] where
+instance QCA.Arbitrary [ThreadParam] where
   arbitrary = QCA.vector numberOfThreads
 
 --------------------------------------------------------------------------------------------------------------------------------------
@@ -108,7 +118,7 @@ instance Arbitrary [ThreadParam] where
 
 test_lotsof_put = TestCase ( do let numberOfThreads = 128
 				    valuesPerThread = 10000000 
-				ht <- emptySetup
+				ht <- emptySetupInt
 				forM_ [0..(numberOfThreads-1)] 
 					(\number -> withAsync (lotsof_put ht 
 					[(0 + (valuesPerThread*number))..(valuesPerThread-1 + (valuesPerThread*number))])

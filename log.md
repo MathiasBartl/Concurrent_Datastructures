@@ -445,6 +445,14 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://hackage.haskell.org/package/QuickCheck-2.4.2/docs/Test-QuickCheck.html
  - http://www.haskell.org/ghc/docs/7.0.4/html/users_guide/type-class-extensions.html
  - https://groups.google.com/forum/#!topic/haskell-cafe/9odPuItN380
+ - http://stackoverflow.com/questions/18687721/implementing-quickcheck-arbitrary-for-algebraic-data-type-with-test-framework
+   multiple versions of Quickcheck bug
+   user@user-Laptop:~/Gsoc/ConcurrentHashTable/gitHubRepo/Concurrent_Datastructures$ ghc-pkg list QuickCheck
+/opt/ghc/7.8.3/lib/ghc-7.8.3/package.conf.d
+/home/user/.ghc/x86_64-linux-7.8.3/package.conf.d
+   QuickCheck-1.2.0.1
+   QuickCheck-2.7.6
+
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
