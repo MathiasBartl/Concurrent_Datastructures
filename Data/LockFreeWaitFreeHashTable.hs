@@ -71,6 +71,11 @@ min_size = 2 ^ min_size_log --must be power of 2, compiler should turn this into
 max_size_log = 31
 max_size = 2 ^ 31
 
+_reprobe_limit = 10
+
+reprobe_limit :: Int -> Int
+reprobe_limit len = _reprobe_limit + (shiftR len 2)
+
 getMask:: Size -> Mask
 getMask size = size -1 
 
@@ -192,6 +197,9 @@ isPrimedValue _ = False
 isPrimedValComp :: ValComp val -> Bool
 isPrimedValComp (Left v) = isPrimedValue v
 isPrimedValComp (Right _) = False
+
+primeValue :: Value val -> Value val
+primeValue (V v) = Vp v
 
 isSentinel :: Value val -> Bool
 isSentinel S = True

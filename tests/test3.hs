@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-} 
-{-# LANGUAGEGeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- puts pairs of keys and values into the table such that key==value and then checks if that is an invariant
 module Main where
@@ -19,7 +19,7 @@ import Test.QuickCheck as QC
 import Test.QuickCheck.Monadic as QCM
 import Test.Framework.Providers.API as PAPI
 import Test.QuickCheck.Arbitrary as QCA
-import Test.Framework.Providers.QuickCheck as  PQC
+import Test.Framework.Providers.QuickCheck2 as  PQC
 import Test.HUnit
 import Test.Framework (defaultMain, plusTestOptions)
 import Test.Framework.Providers.HUnit (hUnitTestToTests)
@@ -38,19 +38,19 @@ emptySetupInt = HT.newConcurrentHashTable
 
 timelimit = TestOptions Nothing Nothing Nothing Nothing Nothing (Just (Just 60000))
 
-data Inout = Put | Get
+data Inout = Put | Get deriving Show
 
-newtype HTActionParam = HTActionParam Int deriving (Eq)
+newtype HTActionParam = HTActionParam Int deriving (Eq, Show)
 
 instance Hashable HTActionParam where
 	hashWithSalt s (HTActionParam i) = hashWithSalt s i
 	hash (HTActionParam i) = hash i
 
-newtype HTAction = HTAction (HTActionParam, Inout)
+newtype HTAction = HTAction (HTActionParam, Inout) deriving Show
 
-newtype ThreadParam = ThreadParam [HTAction]
+newtype ThreadParam = ThreadParam [HTAction] deriving Show
 
-
+newtype ThreadParams = ThreadParams [ThreadParam] deriving Show
 
 fits :: Eq keyval => Maybe keyval -> keyval -> Bool --TODO differet returntype
 fits Nothing _ = True
@@ -68,17 +68,17 @@ test1 ht (ThreadParam caseList) =  forM_ caseList (h1 ht)
 testThread ::  HT.ConcurrentHashTable HTActionParam HTActionParam -> ThreadParam -> IO ()
 testThread ht param = withAsync (test1 ht param) (\async -> return ()) 
 
-h2 :: HT.ConcurrentHashTable HTActionParam HTActionParam -> [ThreadParam] -> IO ()
-h2 ht paramlist = forM_ paramlist (testThread ht)
+h2 :: HT.ConcurrentHashTable HTActionParam HTActionParam -> ThreadParams -> IO ()
+h2 ht (ThreadParams paramlist) = forM_ paramlist (testThread ht)
 
 
-prop1 ::  [ThreadParam] -> QCM.PropertyM IO ()  
+prop1 ::  ThreadParams -> QCM.PropertyM IO ()  
 prop1 params = QCM.wp  emptySetup (\ht -> QCM.run $ h2 ht params )
 
-prop2 :: [ThreadParam] -> QC.Property
+prop2 :: ThreadParams -> QC.Property
 prop2  params = QCM.monadicIO $ prop1 params  
 
-testable1 = undefined
+--testable1 = undefined
 
 --test2 :: (Test.QuickCheck.Testable
 --             testable) => testable ->  PAPI.Test --TODO witch type
@@ -108,8 +108,9 @@ instance QCA.Arbitrary ThreadParam where
   arbitrary = do vec <- QCA.vector repetition
                  return $ ThreadParam vec
 
-instance QCA.Arbitrary [ThreadParam] where
-  arbitrary = QCA.vector numberOfThreads
+instance QCA.Arbitrary ThreadParams where
+  arbitrary = do vec <- QCA.vector numberOfThreads
+		 return $ ThreadParams vec
 
 --------------------------------------------------------------------------------------------------------------------------------------
 

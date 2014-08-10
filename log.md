@@ -453,6 +453,15 @@ very easy to understand, as long as you ignore the informal descriptions
    QuickCheck-1.2.0.1
    QuickCheck-2.7.6
 
+# 10.08.2014
+ 
+ - http://hackage.haskell.org/package/base-4.7.0.1/docs/src/Data-IORef.html
+ - http://www.haskell.org/ghc/docs/7.6.3/html/libraries/base/src/GHC-IORef.html
+ - http://batterseapower.github.io/test-framework/
+ - http://stackoverflow.com/questions/2259926/testing-io-actions-with-monadic-quickcheck/2946515#2946515
+ - http://www.cse.chalmers.se/~rjmh/Papers/QuickCheckST.ps
+ - https://hackage.haskell.org/package/test-framework-quickcheck2
+
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
