@@ -99,7 +99,7 @@ data Slot k v =   Slot {
 
 
 data Kvs k v =   Kvs {
-	newkvs :: Maybe (IORef ( Kvs k v))
+	newkvs :: IORef (Maybe ( Kvs k v))  --TODO, get rid of the extra indirection, https://github.com/gregorycollins/hashtables/blob/master/src/Data/HashTable/Internal/UnsafeTricks.hs --TODO but this trick should already be in the Maybe Monad, if I do this I should make it general for all the indirections --TODO, is there some IORef Maybe module or even moe general around, if not I could write one, or should ghc be able to optimize this.
 	,slots :: Slots k v 
 	, mask :: Mask
 	, slotsCounter :: SlotsCounter
@@ -281,7 +281,8 @@ get_impl table kvs key fullhash = do let msk = mask kvs
 				     v <- readValueSlot slt
 				     if keyComp k ( newKey key) --TODO are there primed keys
                                         then if isSentinel v  
-						then do return $ assert $ hasNextKvs kvs 
+						then do ass <- hasNextKvs kvs
+							return $ assert ass 
 							newkvs <- getNextKvs kvs
 							get_impl table newkvs key fullhash --look in resized table
 						else return v 
@@ -516,15 +517,30 @@ getHeadKvs table = do let kvsref= kvs table
 
 --gets then new resizedtable, throws error if does not exist
 getNextKvs :: Kvs key val -> IO(Kvs key val)
-getNextKvs kv = do let nwkvs = fromJust $ newkvs kv  --throws error
-		   readIORef nwkvs 	  
+getNextKvs kv = do let kvsref =  newkvs kv  --throws error
+		   nwkvs <- readIORef kvsref
+		   return $ fromJust nwkvs 	  
 --TODO change if structure of kvs changes
 
 --Is a resize in progress?
-hasNextKvs :: Kvs key val -> Bool
-hasNextKvs kv =  isJust (newkvs kv )
-
+hasNextKvs :: Kvs key val -> IO Bool
+hasNextKvs kv =  do let kvsref = newkvs kv
+                    nwkvs <- readIORef kvsref
+		    return $ isJust nwkvs
 --TODO possibly change return type to IO BOOL
+
+noKvs :: IO (IORef (Maybe (Kvs key val)))
+noKvs = newIORef Nothing
+
+
+--cas the newkvs field, returns true if previously empty otherwise false  
+casNextKvs :: Kvs key val -> Kvs key val -> IO Bool
+casNextKvs kvs nwkvs = do let kvsref = newkvs kvs
+			  oldticket <- readForCAS kvsref
+			  if isJust $ peekTicket oldticket then return False else do (success, _) <- casIORef kvsref oldticket (Just nwkvs)
+			   						             return $ success
+ --TODO rewrite the other cas stuff accordigly
+--TODO (Just IORef a) is a stupid construction because seting the IORef from Nothing to Just changes an immutable datastructure also you cant do an cas on the Maybe type, todo have some value of IORef that says nothing
 -------------------------------------------------------------------------------------------------------------
 
 -- | Returns the number of key-value mappings in this map
@@ -669,7 +685,8 @@ newKvs :: Size -> SizeCounter-> IO(Kvs key val)
 newKvs size  counter = do let msk = getMask size
 		          slts <- newSlots size
 	                  sltcntr <- newSlotsCounter
-	                  return $ Kvs Nothing slts msk sltcntr counter
+			  kvsref <- noKvs
+	                  return $ Kvs kvsref slts msk sltcntr counter
 	where
 		newSlots :: Size -> IO( Slots key val)
 		newSlots size = V.replicateM size newSlot --TODO
@@ -697,7 +714,8 @@ instance forall k v. (Show k, Show v) => DebugShow (Kvs k v) where
         debugShow kvs = debugshw 0 kvs
 		where debugshw :: Int -> Kvs k v -> IO String
 		      debugshw resizeCounter kvs = do str <- return $ "Kvs number " ++ (show resizeCounter) ++ " \n"
-						      str <- return $ str ++  if isNothing $ newkvs kvs then "Is newest Kvs.\n" else "Is older Kvs.\n" 
+						      hsNextKvs <- hasNextKvs kvs
+						      str <- return $ str ++  if not $ hsNextKvs then "Is newest Kvs.\n" else "Is older Kvs.\n" 
 						      maskstr <- debugShow $ mask kvs
 						      str <- return $ str ++ maskstr
 						      str <- return $ str ++ "sizeCounter:\n "
@@ -708,9 +726,9 @@ instance forall k v. (Show k, Show v) => DebugShow (Kvs k v) where
 						      str <- return $ str ++ slotsCounterStr ++ "Slots:\n"
 						      slotsstr <- debugShow $ slots kvs
 						      str <- return $ str ++ slotsstr
-						      newKvsstr <-  if isNothing $ newkvs kvs then return "END.\n" else 
-								do newkvsIORef <- return $ fromJust $ newkvs kvs
-								   nwKvs <- readIORef newkvsIORef
+						      hsNextKvs <- hasNextKvs kvs
+						      newKvsstr <-  if not $ hsNextKvs then return "END.\n" else 
+								do nwKvs <- getNextKvs kvs
 								   debugShow nwKvs
 						      return $ str ++ newKvsstr
   							
@@ -759,9 +777,10 @@ getNumberOfOngoingResizes :: ConcurrentHashTable k v-> IO Int
 getNumberOfOngoingResizes ht = do kvs <- getHeadKvs ht
                                   getNumber kvs
 	where getNumber :: Kvs k v -> IO Int
-              getNumber kvs = if isNothing $ newkvs kvs then return 0 else do nwkvs <- getNextKvs kvs
-									      newkvsNumber <- getNumber nwkvs
-									      return $ 1 + newkvsNumber
+              getNumber kvs = do hsNextKvs <- hasNextKvs kvs
+				 if not $ hsNextKvs then return 0 else do nwkvs <- getNextKvs kvs
+					                         	  newkvsNumber <- getNumber nwkvs
+									  return $ 1 + newkvsNumber
 -- Hashtable allows for telescopic resizes
 -- This means Values are stored somewhere in a list of vectors
 -- returns length of every vector starting with the oldest
@@ -771,9 +790,10 @@ getLengthsOfVectors ht = do kvs <- getHeadKvs ht
 	where getLengths :: Kvs k v -> IO [Int]
               getLengths kvs = do slots <- return $ slots kvs  --FIXME could use let here
 				  lngth <- return $ V.length slots
-			          if not $ hasNextKvs kvs then return $ lngth:[] else do newkvs <- getNextKvs kvs
-									   	         lst <- getLengths newkvs
-									                 return $ lngth:lst 
+				  hsNextKvs <- hasNextKvs kvs
+			          if not $ hsNextKvs then return $ lngth:[] else do newkvs <- getNextKvs kvs
+									   	    lst <- getLengths newkvs
+									            return $ lngth:lst 
 
 
 getSlotsCounters ::ConcurrentHashTable k v-> IO [Int]
@@ -794,11 +814,14 @@ mapOnKvs ht fun = do kvs <- getHeadKvs ht
 		     mapOn kvs
 	where mapOn :: Kvs k v -> IO [a]
               mapOn kvs = do a <- fun kvs
-			     lst <- if not $ hasNextKvs kvs then return [] else do newKvs <- getNextKvs kvs
-										   mapOn newKvs
+			     hsNextKvs <- hasNextKvs kvs
+			     lst <- if not $ hsNextKvs then return [] else do newKvs <- getNextKvs kvs
+								              mapOn newKvs
 			     return $ a:lst
 
 
 --todo generate arbitrary hashtables
+
+--write an assertio for resize
 
 

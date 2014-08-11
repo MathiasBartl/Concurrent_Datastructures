@@ -462,6 +462,13 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://www.cse.chalmers.se/~rjmh/Papers/QuickCheckST.ps
  - https://hackage.haskell.org/package/test-framework-quickcheck2
 
+# 11.08.2014
+ 
+ - http://stackoverflow.com/questions/6302249/how-to-implement-a-global-counter-using-monad
+ - http://www.haskell.org/haskellwiki/New_monads/MonadSupply
+ - https://hackage.haskell.org/package/time-1.4.0.1/docs/Data-Time-Clock.html
+ - http://www.haskell.org/pipermail/haskell-cafe/2008-September/047032.html
+
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
