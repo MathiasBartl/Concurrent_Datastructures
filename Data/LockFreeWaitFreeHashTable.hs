@@ -318,12 +318,13 @@ readSlot slt = do key <- readKeySlot slt
 		  value <- readValueSlot slt
 		  return (key, value)
 	
-
---TODO compare means pointer equality, so get this fixed
---TODO Question When are 2 Keys equal, and why does ticket not require a to be in class eq, how exactly does the COMPARE part work
---one moment we never overwrite a Key Slot
--- returns 1: there is now an fiting key
---            it was changed by the cas
+-- | cas the slot from KEmpty to the new key and succeds
+-- , does nothing and succeds if the new key is already in the slot
+-- , does nothing and fails if another key is already in the slot
+-- , never changes the slot if there is already a key in the slot
+-- , returns pair of Bool: 1.: True -> new key is in the slot, False -> some other key is in the slot (use this for collision detection)
+-- ,                       2.: True -> cased the slot of KEmpty to the new key thereby using up the slot, False -> the new key was already 
+--					in the slot ( use this for adapting the slotscounter) 
 casKeySlot :: (Eq key) =>
 	(Slot key value) -> Key key -> IO (Bool,Bool)
 casKeySlot (Slot ke _) new = do return $ assert $ not $ isKEmpty new 
@@ -336,7 +337,7 @@ casKeySlot (Slot ke _) new = do return $ assert $ not $ isKEmpty new
 						   ((not success) && (not $ isKempty retkey))
 					    if success then return (True,True) else
 						   if keyComp new retkey then return (True,False) else return (False,False)   	
---todo possibly Bool if key did change by the cas itself, or if it was already there and done by another thread 									 								
+ 									 								
 {-casKeySlot :: forall key value. (Eq key) =>
 		 (Slot key value) -> Key key -> Key key -> IO ( (Bool, Key key) )				
 -}
@@ -483,7 +484,7 @@ putIfMatch kvs key putVal expVal = do
 						else no_match_old slt newval 
 					        else match slt newval (fromLeft oldvalcmp)
 --TODO is there any backoff in cliff clicks algorithm
-					where match_any :: Slot key val -> Value val -> IO((Bool,Value val))
+					where match_any :: Slot key val -> Value val -> IO((Bool,Value val))  --TODO consolidate in new casValueslot
 					      match_any slt newval = do oldval <- readValueSlot slt
 									if isTombstone oldval then return (False,oldval) else --is that actually ok if not done in order
 										do (success, ret) <- casValueSlot slt oldval newval
