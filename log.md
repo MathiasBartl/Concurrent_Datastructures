@@ -473,8 +473,16 @@ very easy to understand, as long as you ignore the informal descriptions
 
 # 12.08.2014
 
- - http://en.wikipedia.org/wiki/Jenkins_hash_function 
-.
+ - http://en.wikipedia.org/wiki/Jenkins_hash_function
+ - http://www.haskell.org/haddock/doc/html/markup.html
+ - http://hackage.haskell.org/package/base-4.7.0.1/docs/Control-Monad-ST.html
+ - http://docs.oracle.com/javase/tutorial/java/nutsandbolts/operators.html 
+ - http://stackoverflow.com/questions/2244387/bitwise-shift-operators-signed-and-unsigned
+ - https://hackage.haskell.org/package/haskell2010-1.1.1.0/docs/Data-Word.html
+ - http://www.haskell.org/haskellwiki/Converting_numbers
+ - http://www.haskell.org/haskellwiki/Dealing_with_binary_data
+ - https://hackage.haskell.org/package/base-4.1.0.0/docs/Data-Int.html 
+.Coercing word types (see Data.Word) to and from integer types preserves representation, not sign. 
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
