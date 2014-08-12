@@ -469,7 +469,12 @@ very easy to understand, as long as you ignore the informal descriptions
  - https://hackage.haskell.org/package/time-1.4.0.1/docs/Data-Time-Clock.html
  - http://www.haskell.org/pipermail/haskell-cafe/2008-September/047032.html
  - http://en.wikipedia.org/wiki/Compare-and-swap
+ - http://aszt.inf.elte.hu/~cefp2009/materials/slides/Divianszky.html
 
+# 12.08.2014
+
+ - http://en.wikipedia.org/wiki/Jenkins_hash_function 
+.
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

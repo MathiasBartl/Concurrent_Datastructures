@@ -257,6 +257,12 @@ maskHash mask hsh = hsh .&. mask
 
 
 
+--variant of single word Wang/Jenkins Hash
+spreadHash :: Int -> Int
+spreadHash = undefined
+--see line 262 https://github.com/boundary/high-scale-lib/blob/master/src/main/java/org/cliffc/high_scale_lib/NonBlockingHashtable.java
+--TODO use this to generate fullhash
+--TODO remove explicit generation of fullhash except in key contructor
 
 
 
@@ -316,32 +322,23 @@ readSlot slt = do key <- readKeySlot slt
 --TODO compare means pointer equality, so get this fixed
 --TODO Question When are 2 Keys equal, and why does ticket not require a to be in class eq, how exactly does the COMPARE part work
 --one moment we never overwrite a Key Slot
+-- returns 1: there is now an fiting key
+--            it was changed by the cas
 casKeySlot :: (Eq key) =>
-	(Slot key value) -> Key key -> IO Bool
+	(Slot key value) -> Key key -> IO (Bool,Bool)
 casKeySlot (Slot ke _) new = do return $ assert $ not $ isKEmpty new 
 				oldticket <- readForCAS ke 
-				if not $ isKEmpty $ peekTicket oldticket then if keyComp new (peekTicket oldticket)  then return True else return False else do (success, retkeyticket) 
-													   <- casIORef ke oldticket new
-													 retkey <- return $ peekTicket retkeyticket
-													 return $ assert $
-													   (success && (isKempty retkey)) ||
-													   ((not success) && (not $ isKempty retkey))
-													 if success then return True else
-													   if keyComp new retkey then return True
-													   else return False   --FIXME this is a bug cas actually return the new value the 										 								
+				oldkey <- return $ peekTicket oldticket
+				if not $ isKEmpty $ oldkey then if keyComp new oldkey  then return (True,False) else return (False,False) else
+					 do (success, retkeyticket) <- casIORef ke oldticket new
+					    retkey <- return $ peekTicket retkeyticket
+					    return $ assert $ (success && (keyComp new retkey)) ||
+						   ((not success) && (not $ isKempty retkey))
+					    if success then return (True,True) else
+						   if keyComp new retkey then return (True,False) else return (False,False)   	
+--todo possibly Bool if key did change by the cas itself, or if it was already there and done by another thread 									 								
 {-casKeySlot :: forall key value. (Eq key) =>
-		 (Slot key value) -> Key key -> Key key -> IO ( (Bool, Key key) )
-casKeySlot slt@(Slot ke va) old new = do
-				sltoldticket <- readForCAS ke
-				if not (keyComp (peekTicket sltoldticket) old) then return (False, sltold) --TODO Issue keyComp is not atomic 
-					else do oldref <- (return ke)::IO(IORef (Key key))
-						newref <- (newIORef new)::IO(IORef (Key key))
-					        oldticket <- (readForCAS oldref) ::IO(Ticket(Key key))
-					        newticket <- (readForCAS newref) ::IO(Ticket(Key key))
-						(success, _) <- (casIORef2 ke oldticket newticket)::IO(Bool, Ticket(Key key))
-						oldkey <- (return sltold)::IO(Key key) --TODO readIORef seems unnecessary
-				        	if success then return (success, oldkey) else casKeySlot slt old new--TODO, is the repetition really necessary 
-			--TODO compare old with key value if not equal return false, oldkey else cas oldkey if succes return true oldkey, if fail					
+		 (Slot key value) -> Key key -> Key key -> IO ( (Bool, Key key) )				
 -}
 
 casValueSlot (Eq value) =>
@@ -354,9 +351,11 @@ casValueSlot slt@(Slot _ va) cmpvaluecomp newvalue = do
 		if success then return (True, oldvalue) else casValueSlot slt cmpvaluecomp newvalue --TODO This is the Only place for backoff code 
   where matchesVal :: Value val -> ValComp val -> Value val -> Bool
 	matchesVal = undefined
+--TODO write a prime ignorant match function then
 --lets think about how to threat primed values
 
 --TODO one could save oneself one readForCas by reusing retticket, that why the thing returns a ticket
+--by havin casValueSlot as an wraper for an rekursive functionusing tickets
 
 --TODO
 
