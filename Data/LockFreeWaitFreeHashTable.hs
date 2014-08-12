@@ -348,9 +348,7 @@ casKeySlot (Slot ke _) new = do return $ assert $ not $ isKEmpty new -- new key 
 						   -- there was already an key in the slot, no retry because slotkeys are never to be overwritten
 						   -- is it the same as the new key  	
  									 								
-{-casKeySlot :: forall key value. (Eq key) =>
-		 (Slot key value) -> Key key -> Key key -> IO ( (Bool, Key key) )				
--}
+
 -- | cas the slot to the new value, if the slot value fits the compare value
 --   returns success and the old value
 casValueSlot :: forall value key. (Eq value) =>
@@ -359,7 +357,7 @@ casValueSlot slt@(Slot _ va) cmpvaluecomp newvalue = do
 	oldvalueticket <- readForCAS va
 	oldvalue <- return $ peekTicket oldvalueticket
 	return $ assert $ (not $ isSentinel oldvalue) && (not $ isPrimedValue oldvalue) --FIXME resize
-	if matchesVal oldvalue cmpvaluecomp newvalue then return (False, oldvalue) else do 
+	if not $ matchesVal oldvalue cmpvaluecomp newvalue then return (False, oldvalue) else do  --TODO then else confused
 		(success, retticket) <- casIORef va oldvalueticket newvalue 
 		if success then return (True, oldvalue) else casValueSlot slt cmpvaluecomp newvalue --TODO This is the Only place for backoff code 
   where matchesVal :: Value value -> ValComp value -> Value value -> Bool
@@ -373,10 +371,6 @@ casValueSlot slt@(Slot _ va) cmpvaluecomp newvalue = do
 --by havin casValueSlot as an wraper for an rekursive functionusing tickets
 
 
---TODO, see casKeySlot
-{-casValueSlot :: forall key value. (Eq value) =>
-	        (Slot key value) -> Value value -> Value value -> IO ( Bool, Value value )
--}
 
 casStripPrime :: (Slot key value) -> IO ()
 casStripPrime slt@(Slot _ va) = do oldticket <- readForCAS va
@@ -385,7 +379,9 @@ casStripPrime slt@(Slot _ va) = do oldticket <- readForCAS va
 				     do (_,_) <- casIORef va oldticket (stripPrime oldvalue)
 					return ()
 	where stripPrime :: Value val -> Value val
-	      stripPrime = undefined
+	      stripPrime (Vp a) = V a
+	      stripPrime Tp = T
+	      stripPrime unprimed = unprimed
                --get a reference to the value, --what about tickets
                -- if not a prime, then write has already happend -> end
                -- else contruct an unprimed value, and a reference to it
@@ -475,46 +471,29 @@ putIfMatch kvs key putVal expVal = do
 				-- checks if the key in slt fits or puts the newkey there if thers an empts
 				-- responsible for updating the slotscounter
 				where helper2 :: Slot key val -> IO Bool
-				      helper2 slt = do --(wasEmpty,_) <- casKeySlot slt Kempty key  
-						       (success, cased) <- casKeySlot slt key
+				      helper2 slt = do (success, cased) <- casKeySlot slt key
 						       if cased then incSlotsCntr else return () 
 --TODO doing a simple check before the expensive cas should not be harmfull, because of the monotonic nature of keys
-						       return success 
-
-							 
+						       return success 		 
 					--set the value, return old value
-				      setval :: Slot key val -> Value val -> ValComp val -> IO((Bool,Value val)) --TODO define an datatype (Bool,Value val)
-		       		      setval slt newval oldvalcmp = casValueSlot slt oldvalcmp newval --TODO remove indirction--if isRight oldvalcmp then if (fromRight oldvalcmp) ==  MATCH_ANY then match_any slt newval
-						--else no_match_old slt newval 
-					        --else match slt newval (fromLeft oldvalcmp)
---TODO is there any backoff in cliff clicks algorithm --TODO remove unused code, cleanup
-					{-where match_any :: Slot key val -> Value val -> IO((Bool,Value val))  --TODO consolidate in new casValueslot
-					      match_any slt newval = do oldval <- readValueSlot slt
-									if isTombstone oldval then return (False,oldval) else --is that actually ok if not done in order
-										do (success, ret) <- casValueSlot slt oldval newval
-										   if success then return (success,ret) else match_any slt newval
-					      no_match_old :: Slot key val -> Value val -> IO((Bool,Value val))
-					      no_match_old slt newval = do oldval <- readValueSlot slt --TODO do I actually need to do a cas here
-									   if valComp oldval newval then return (False,oldval) else --not successfull
-										do (success, ret) <- casValueSlot slt oldval newval
-										   if success then (return (success,ret)) else no_match_old slt newval 
-					      match :: Slot key val -> Value val -> Value val-> IO((Bool,Value val))
-					      match slt newval oldval = do (success, ret) <- casValueSlot slt oldval newval
-                                                                           return (success,ret)-}
-						--TODO, do we need a cas here
+				      setval :: Slot key val -> Value val -> ValComp val -> IO((Bool,Value val))
+		       		      setval slt newval oldvalcmp = casValueSlot slt oldvalcmp newval --TODO remove indirction
 				      --TODO if T to Value inc size counter, if V to T or S dec size counter
 				      opSizeCntr :: Value val -> Value val -> IO()
 				      opSizeCntr T (V _)      = incSizeCounter kvs
-				      opSizeCntr T (Vp _)     = incSizeCounter kvs --TODO debatable
+				      opSizeCntr T (Vp _)     = incSizeCounter kvs --TODO debatable Primes are used for 2 stage copy so I need a detialed plan on how to count size during copys, in effect once a key val pair becomes available size increases it becomes unavailiable decreases
 				      opSizeCntr T S          = return ()
 				      opSizeCntr (V _) (Vp _) = return ()
 				      opSizeCntr (V _ )(V _)  = return ()
 				      opSizeCntr (Vp _) T     =  decSizeCounter kvs
 				      opSizeCntr (V _ ) T     =  decSizeCounter kvs
 				      opSizeCntr (V _)  S     =  decSizeCounter kvs	
-				      opSizeCntr (Vp _) (V _) = return ()			
+				      opSizeCntr (Vp _) (V _) = return () 
+				      --opSizeCntr _ _          = return ()				
 				      --TODO check witch changes are possible and witch arnt
 				      --TODO save sizecntr operationd on resize
+					--TODO what if T T
+
 
 				      incSlotsCntr :: IO()
 				      incSlotsCntr = incSlotsCounter kvs
@@ -743,6 +722,7 @@ newKvs size  counter = do let msk = getMask size
 --Debug code --TODO make inclusion conditional with preprocessor or something for DEBUG only
 ----------------------------------------------------------------------------------------------------------------------------------------------------
 
+--TODO shorten the output and make it more readable
 class DebugShow a where
         debugShow :: a -> IO String
 --TODO Automatic indentation, ask on Stack Overflow about it.

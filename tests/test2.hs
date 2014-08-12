@@ -81,6 +81,8 @@ test1 = TestCase ( do ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTab
 --TODO some setup with put, and then seperate testcases for every function
 
 test_put = TestCase (do ht <- setup
+                        htstr <-  HT.debugShow ht --FIXME temporary
+		        putStr htstr
 		        ret <- HT.put ht 10 16 --overwrite existing value
 			assertEqual "should return old value" (Just 10) ret
 			ret <- HT.put ht 10 17 --overwrite existing value again
