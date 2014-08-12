@@ -468,6 +468,7 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://www.haskell.org/haskellwiki/New_monads/MonadSupply
  - https://hackage.haskell.org/package/time-1.4.0.1/docs/Data-Time-Clock.html
  - http://www.haskell.org/pipermail/haskell-cafe/2008-September/047032.html
+ - http://en.wikipedia.org/wiki/Compare-and-swap
 
 # reading list:
 

@@ -140,6 +140,8 @@ data ConcurrentHashTable key val = ConcurrentHashTable {
 newKey :: Hashable k => k -> Key k
 newKey k = Key (hash k) k
 
+emptyKey = Kempty
+
 
 getFullHash :: Key k -> FullHash
 getFullHash = fullHash
@@ -177,6 +179,8 @@ valCompComp :: Eq val =>
 valCompComp  (Left v1) v2 = valComp v1 v2
 valCompComp  (Right MATCH_ANY) _ = True
 --TODO does comparision with NO_MATCH_OLD fit
+
+
 
 
 valComp :: Eq val => Value val -> Value val -> Bool
@@ -311,11 +315,25 @@ readSlot slt = do key <- readKeySlot slt
 
 --TODO compare means pointer equality, so get this fixed
 --TODO Question When are 2 Keys equal, and why does ticket not require a to be in class eq, how exactly does the COMPARE part work
-casKeySlot :: forall key value. (Eq key) =>
+--one moment we never overwrite a Key Slot
+casKeySlot :: (Eq key) =>
+	(Slot key value) -> Key key -> IO Bool
+casKeySlot (Slot ke _) new = do return $ assert $ not $ isKEmpty new 
+				oldticket <- readForCAS ke 
+				if not $ isKEmpty $ peekTicket oldticket then if keyComp new (peekTicket oldticket)  then return True else return False else do (success, retkeyticket) 
+													   <- casIORef ke oldticket new
+													 retkey <- return $ peekTicket retkeyticket
+													 return $ assert $
+													   (success && (isKempty retkey)) ||
+													   ((not success) && (not $ isKempty retkey))
+													 if success then return True else
+													   if keyComp new retkey then return True
+													   else return False   --FIXME this is a bug cas actually return the new value the 										 								
+{-casKeySlot :: forall key value. (Eq key) =>
 		 (Slot key value) -> Key key -> Key key -> IO ( (Bool, Key key) )
 casKeySlot slt@(Slot ke va) old new = do
-				sltold <- readIORef ke
-				if not (keyComp sltold old) then return (False, sltold) --TODO Issue keyComp is not atomic 
+				sltoldticket <- readForCAS ke
+				if not (keyComp (peekTicket sltoldticket) old) then return (False, sltold) --TODO Issue keyComp is not atomic 
 					else do oldref <- (return ke)::IO(IORef (Key key))
 						newref <- (newIORef new)::IO(IORef (Key key))
 					        oldticket <- (readForCAS oldref) ::IO(Ticket(Key key))
@@ -324,9 +342,26 @@ casKeySlot slt@(Slot ke va) old new = do
 						oldkey <- (return sltold)::IO(Key key) --TODO readIORef seems unnecessary
 				        	if success then return (success, oldkey) else casKeySlot slt old new--TODO, is the repetition really necessary 
 			--TODO compare old with key value if not equal return false, oldkey else cas oldkey if succes return true oldkey, if fail					
+-}
+
+casValueSlot (Eq value) =>
+	(Slot key value) -> ValComp value -> Value value -> IO (Bool, Value value)
+casValueSlot slt@(Slot _ va) cmpvaluecomp newvalue = do
+	oldvalueticket <- readForCAS va
+	oldvalue <- peekTicket oldvalueticket
+	if matchesVal oldvalue cmpvaluecomp newvalue then return (False, oldvalue) else do 
+		(success, retticket) <- casIORef va oldvalueticket newvalue 
+		if success then return (True, oldvalue) else casValueSlot slt cmpvaluecomp newvalue --TODO This is the Only place for backoff code 
+  where matchesVal :: Value val -> ValComp val -> Value val -> Bool
+	matchesVal = undefined
+--lets think about how to threat primed values
+
+--TODO one could save oneself one readForCas by reusing retticket, that why the thing returns a ticket
+
+--TODO
 
 --TODO, see casKeySlot
-casValueSlot :: forall key value. (Eq value) =>
+{-casValueSlot :: forall key value. (Eq value) =>
 	        (Slot key value) -> Value value -> Value value -> IO ( Bool, Value value )
 casValueSlot slt@(Slot ke va) old new = do
 				sltold <- readIORef va
@@ -338,17 +373,20 @@ casValueSlot slt@(Slot ke va) old new = do
 					   (success, _) <- (casIORef2 va oldticket newticket)::IO(Bool, Ticket(Value value))
  					   oldvalue <- return sltold
 					   if success then return (success, oldvalue) else casValueSlot slt old new--TODO, is the repetition really necessary 
-
+-}
 --setValueSlot :: forall key value. (Slot key value) -> Value value -> Value value -> IO ( Bool )
 
 casStripPrime :: (Slot key value) -> IO ()
-casStripPrime slt@(Slot ke va) = undefined
+casStripPrime slt@(Slot _ va) = do oldticket <- readForCAS va
+				   oldvalue <- peekTicket oldticket
+				   if not $ isPrimedValue oldvalue then return () else
+				     do (_,_) <- casIORef va oldticket (stripPrime oldvalue)
+					return ()
                --get a reference to the value, --what about tickets
                -- if not a prime, then write has already happend -> end
                -- else contruct an unprimed value, and a reference to it
                -- cas that agaist the original reference if failed because somebody already wrote an value then ->end
-		--if failed because of congestion what then
---question do the cas fail because of congestion
+
             
 
 
@@ -824,4 +862,5 @@ mapOnKvs ht fun = do kvs <- getHeadKvs ht
 
 --write an assertio for resize
 
+--TODO Assert each kvs does not contain the same key twice
 
