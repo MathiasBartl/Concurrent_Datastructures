@@ -27,10 +27,10 @@
 
 
 
---TODO Data.HashTables... or Data.Concurrent...
+-- TODO Data.HashTables... or Data.Concurrent...
 --something like Data.HashTables.IO.NonBlocking.something
 --               Data.HashTables.IO.Concurrent.NonBlocking.something
---TODO make list of all Hashtable libraries in haskell and compare
+-- TODO make list of all Hashtable libraries in haskell and compare
 module Data.LockFreeWaitFreeHashTable 
 	( 
           -- * Creating hash tables
@@ -84,13 +84,16 @@ getMask size = size -1
 --data representation
 ---------------------------------------------------------------------------------------------------------------------------------
 -- Kempty : empty, K : neverchanging key
---data Key key = Kempty | K key deriving (Eq) --TODO make instance of Eq --TODO do keys need to be primed
-data Key k = Kempty | Key { fullHash :: !FullHash
+--data Key key = Kempty | K key deriving (Eq) 
+  -- TODO make instance of Eq 
+  -- TODO do keys need to be primed
+data Key k = Kempty 
+           | Key { fullHash :: !FullHash
 		 , keyE :: !k
 		 } 
 
--- T : empty, tombstone, Tp : tombstone primed, V : value, Vp : value primed --TODO need tobstoes to be primed
-data Value value =  T | Tp |V value | Vp value | S deriving (Eq) --TODO what kind of comparision is used
+-- T : empty, tombstone, Tp : tombstone primed, V : value, Vp : value primed -- TODO need tobstoes to be primed
+data Value value =  T | Tp | V value | Vp value | S deriving (Eq) -- TODO what kind of comparision is used
 
 
 
@@ -101,7 +104,11 @@ data Slot k v =   Slot {
 
 
 data Kvs k v =   Kvs {
-	newkvs :: IORef (Maybe ( Kvs k v))  --TODO, get rid of the extra indirection, https://github.com/gregorycollins/hashtables/blob/master/src/Data/HashTable/Internal/UnsafeTricks.hs --TODO but this trick should already be in the Maybe Monad, if I do this I should make it general for all the indirections --TODO, is there some IORef Maybe module or even moe general around, if not I could write one, or should ghc be able to optimize this.
+	newkvs :: IORef (Maybe ( Kvs k v))  
+  -- TODO, get rid of the extra indirection, 
+  --   https://github.com/gregorycollins/hashtables/blob/master/src/Data/HashTable/Internal/UnsafeTricks.hs 
+  -- TODO but this trick should already be in the Maybe Monad, if I do this I should make it general for all the indirections 
+  -- TODO, is there some IORef Maybe module or even moe general around, if not I could write one, or should ghc be able to optimize this.
 	,slots :: Slots k v 
 	, mask :: Mask
 	, slotsCounter :: SlotsCounter
@@ -126,10 +133,11 @@ data ValComparator = MATCH_ANY | NO_MATCH_OLD deriving Eq
 
 type ValComp val = Either (Value val) ValComparator 
 
-type ReturnValue val = (Bool, Value val)    --TODO find good name for this type, write description
+type ReturnValue val = (Bool, Value val) 
+   -- TODO find good name for this type, write description
 
 type Slots key val = V.Vector (Slot key val)
---TODO issue accessing the array generates a full copy, fix this latter 
+  -- TODO issue accessing the array generates a full copy, fix this latter 
 
 data ConcurrentHashTable key val = ConcurrentHashTable {	
 		  kvs :: IORef(Kvs key val)
@@ -172,7 +180,7 @@ unwrapValue T = Nothing
 unwrapValue Tp = Nothing
 unwrapValue (V a) = Just a
 unwrapValue (Vp a) = Just a
---TODO what if Sentinel
+-- TODO what if Sentinel
 --probably best to throw error
 
 --for use by 
@@ -180,7 +188,7 @@ valCompComp :: Eq val =>
                ValComp val -> Value val -> Bool
 valCompComp  (Left v1) v2 = valComp v1 v2
 valCompComp  (Right MATCH_ANY) _ = True
---TODO does comparision with NO_MATCH_OLD fit
+-- TODO does comparision with NO_MATCH_OLD fit
 
 
 
@@ -193,7 +201,7 @@ valComp _ T = False
 valComp S S = True
 valComp S _ = False
 valComp _ S = False
---TODO primed values
+-- TODO primed values
 
 isPrimedValue :: Value val -> Bool
 isPrimedValue Tp = True
@@ -225,7 +233,7 @@ isValue :: Value val -> Bool
 isValue (V _) = True
 isValue _ = False
 
---TODO what if primed Tombstone
+-- TODO what if primed Tombstone
 --------------------------------------------------------------------------------------------------------------------------------------------
 
 -- does not terminate if array is full, and key is not in it
@@ -247,7 +255,7 @@ getSlot slots mask key =  do	let fllhash = fullHash key
                            slot <- (if full oldkey newkey
                                     then getSlt slots newkey (collision idx mask) mask
                                     else return slot) :: IO (Slot key value)
-                           return slot --TODO count reprobes 
+                           return slot -- TODO count reprobes 
 
 collision :: SlotsIndex -> Mask -> SlotsIndex
 collision idx mask = (idx +1) .&. mask
@@ -268,13 +276,13 @@ spreadHash input = runST $ do h <- return $ input + ( (shiftL input 15) `xor` 0x
 	where unsignedShiftR :: Int -> Int -> Int
 	      unsignedShiftR input len= fromIntegral (shiftR ((fromIntegral input)::Word32) len) 
 --see line 262 https://github.com/boundary/high-scale-lib/blob/master/src/main/java/org/cliffc/high_scale_lib/NonBlockingHashtable.java
---TODO use this to generate fullhash
---TODO remove explicit generation of fullhash except in key contructor
+-- TODO use this to generate fullhash
+-- TODO remove explicit generation of fullhash except in key contructor
 
 
 
 
--- |compares the key in a slot with another key
+-- | Compares the key in a slot with another key
 keyCompSlot:: Eq key => 
           Slot key val-> Key key -> IO Bool
 keyCompSlot slot key = do slotkey <- readKeySlot slot
@@ -287,31 +295,31 @@ isKEmptySlot slot = do slotkey <- readKeySlot slot
 		       return $ isKEmpty slotkey
 
 
---see get
---reading during resize is already imlemented
+-- see get
+-- reading during resize is already imlemented
 get_impl :: (Eq key, Hashable key) => 
-            ConcurrentHashTable key val -> Kvs key val -> key -> FullHash -> IO(Value val) --TODO_Hash
+            ConcurrentHashTable key val -> Kvs key val -> key -> FullHash -> IO(Value val) -- TODO_Hash
 get_impl table kvs key fullhash = do let msk = mask kvs
                                          slts = slots kvs
-				     slt <- getSlot  slts msk (newKey key)--TODO pass fullhash
+				     slt <- getSlot  slts msk (newKey key)-- TODO pass fullhash
 				     k <- readKeySlot slt
 				     v <- readValueSlot slt
-				     if keyComp k ( newKey key) --TODO are there primed keys
+				     if keyComp k ( newKey key) -- TODO are there primed keys
                                         then if isSentinel v  
 						then do ass <- hasNextKvs kvs
 							return $ assert ass 
 							newkvs <- getNextKvs kvs
 							get_impl table newkvs key fullhash --look in resized table
 						else return v 
-                                     	else return T  --TODO use hash-caching for keycompare
---TODO actually we could use IO(Maybe (Value val)) as return type
---TODO attention may return a primed value			
---TODO treat resize
---TODO count reprobes
---TODO only pass reference to table if necessary
---TODO fit get function with table resizing
+                                     	else return T  -- TODO use hash-caching for keycompare
+-- TODO actually we could use IO(Maybe (Value val)) as return type
+-- TODO attention may return a primed value			
+-- TODO treat resize
+-- TODO count reprobes
+-- TODO only pass reference to table if necessary
+-- TODO fit get function with table resizing
 
---Accessing the slot
+-- Accessing the slot
 --------------------------------------------------------------------------------------------------------------------------------
 
 readKeySlot:: Slot key value -> IO (Key key)
@@ -325,8 +333,8 @@ readSlot slt = do key <- readKeySlot slt
 		  value <- readValueSlot slt
 		  return (key, value)
 	
--- | cas the slot from KEmpty to the new key and succeds
--- , does nothing and succeds if the new key is already in the slot
+-- | CAS the slot from KEmpty to the new key and succeeds
+-- , does nothing and succeeds if the new key is already in the slot
 -- , does nothing and fails if another key is already in the slot
 -- , never changes the slot if there is already a key in the slot
 -- , returns pair of Bool: 1.: True -> new key is in the slot, False -> some other key is in the slot (use this for collision detection)
@@ -349,25 +357,25 @@ casKeySlot (Slot ke _) new = do return $ assert $ not $ isKEmpty new -- new key 
 						   -- is it the same as the new key  	
  									 								
 
--- | cas the slot to the new value, if the slot value fits the compare value
---   returns success and the old value
+-- | CAS the slot to the new value; if the slot value fits the compare value
+--   returns success and the old value.
 casValueSlot :: forall value key. (Eq value) =>
 	(Slot key value) -> ValComp value -> Value value -> IO (Bool, Value value)
 casValueSlot slt@(Slot _ va) cmpvaluecomp newvalue = do
 	oldvalueticket <- readForCAS va
 	oldvalue <- return $ peekTicket oldvalueticket
 	return $ assert $ (not $ isSentinel oldvalue) && (not $ isPrimedValue oldvalue) --FIXME resize
-	if not $ matchesVal oldvalue cmpvaluecomp newvalue then return (False, oldvalue) else do  --TODO then else confused
+	if not $ matchesVal oldvalue cmpvaluecomp newvalue then return (False, oldvalue) else do  -- TODO then else confused
 		(success, retticket) <- casIORef va oldvalueticket newvalue 
-		if success then return (True, oldvalue) else casValueSlot slt cmpvaluecomp newvalue --TODO This is the Only place for backoff code 
+		if success then return (True, oldvalue) else casValueSlot slt cmpvaluecomp newvalue -- TODO This is the Only place for backoff code 
   where matchesVal :: Value value -> ValComp value -> Value value -> Bool
 	matchesVal oldvalue (Right MATCH_ANY) _ = not $ isTombstone oldvalue --oldvalue is not a tombstone  --FIXME, RESIZE related PRIMED,SENTINEL 
 	matchesVal oldvalue (Right NO_MATCH_OLD) newvalue = not $ valComp oldvalue newvalue -- newvalue != oldvalue 	
 	matchesVal oldvalue (Left cmpvalue) _ = valComp oldvalue cmpvalue --oldvalue == cmpvalue --FIXME, RESIZE related PRIMED,SENTINEL
 --matchesVal is resize ignorant
---TODOlets think about how to threat primed values
+-- TODOlets think about how to threat primed values
 
---TODO one could save oneself one readForCas by reusing retticket, that why the thing returns a ticket.
+-- TODO one could save oneself one readForCas by reusing retticket, that why the thing returns a ticket.
 --by havin casValueSlot as an wraper for an rekursive functionusing tickets
 
 
@@ -392,11 +400,14 @@ casStripPrime slt@(Slot _ va) = do oldticket <- readForCAS va
 
 --resizes stuff
 -----------------------------------------------------------------------------------------------------------------------
---TODO, what happens to the slotscounter of the old kvs, how does the program know, that the old kvs has been completely copied
+-- TODO, what happens to the slotscounter of the old kvs, how does the program know, that
+-- the old kvs has been completely copied
 copyOnePair :: Slot key value -> Kvs key value -> IO () 
-copyOnePair slt newkvs = do undefined -- TODO read Slot --TODO should there be any assert special case threatment, or should these be in a wraper
-			    (oldkey, oldvalue) <- readSlot slt --TODO no Key here -> nothing to copy
-			    --TODO Tombstone no need to copy, but best to cas a sentinel
+copyOnePair slt newkvs = do undefined -- TODO read Slot 
+                                      -- TODO should there be any assert special case
+                                      -- threatment, or should these be in a wraper
+			    (oldkey, oldvalue) <- readSlot slt -- TODO no Key here -> nothing to copy
+			    -- TODO Tombstone no need to copy, but best to cas a sentinel
 			    (casNewSuccess, newSlot) <- putAndReturnSlot oldkey oldvalue newkvs  -- the slot on the newkvs where the primed value has been put)
 			    if casNewSuccess then do  casSsuccess <- undefined 
 		            			      if casSsuccess then do fence 
@@ -427,11 +438,11 @@ putIfMatch_T table key putVal expVal = do let ky = newKey key
                                           putIfMatch kv ky putVal expVal                                   
 
 
---TODO write during resize
---TODO refactor for readability/structure
---TODO, do we need to pass the Hashtable as parameter?
---TODO use only by acessor functions, not by resizing algorithm
---TODO assert key is not empty, putval is no empty, but possibly a tombstone, key value are not primed 
+-- TODO write during resize
+-- TODO refactor for readability/structure
+-- TODO, do we need to pass the Hashtable as parameter?
+-- TODO use only by acessor functions, not by resizing algorithm
+-- TODO assert key is not empty, putval is no empty, but possibly a tombstone, key value are not primed 
 putIfMatch :: forall key val. (Hashable key, Eq key, Eq val) =>
               Kvs key val -> Key key -> Value val -> ValComp val -> IO (Value val)
 putIfMatch kvs key putVal expVal = do
@@ -440,25 +451,25 @@ putIfMatch kvs key putVal expVal = do
       fllhash = fullHash key  :: FullHash 
       idx = maskHash msk fllhash ::SlotsIndex --parameterise maskHash with kvs and key
   --reprobe_cnt <- return 0
-  --TODO get highest kvs and test if a resize is running and then get the second highest kvs
-  return $ assert $ not $ isKEmpty key --TODO use eq TODO this is not in the original
+  -- TODO get highest kvs and test if a resize is running and then get the second highest kvs
+  return $ assert $ not $ isKEmpty key -- TODO use eq TODO this is not in the original
   return $ assert $ not $ isPrimedValue putVal
   return $ assert $ not $ isPrimedValComp expVal
   slot  <- (getSlot slts msk key) ::IO(Slot key val)
   
   oldKey <-  readKeySlot slot
-  if isKEmpty oldKey --if putvall TMBSTONE and oldkey == empty do nothing --TODO put this lines into an subfunction
+  if isKEmpty oldKey --if putvall TMBSTONE and oldkey == empty do nothing -- TODO put this lines into an subfunction
     then if (isTombstone putVal)
          then return T {-TODO break writing value unnecessary -} 
-         else ptIfmtch slts msk key putVal expVal idx newReprobeCounter --TODO remove line duplication
+         else ptIfmtch slts msk key putVal expVal idx newReprobeCounter -- TODO remove line duplication
     else ptIfmtch slts msk key putVal expVal idx newReprobeCounter  
---TODO when would cas fail
+-- TODO when would cas fail
      --actually does the putting after tests and special cases have been handled
      where ptIfmtch :: Slots key val -> Mask ->  Key key  -> Value val -> ValComp val ->
 	             SlotsIndex -> ReprobeCounter -> IO(Value val)
            ptIfmtch slts msk key  newval compval idx reprobectr = do let slt = slts V.! idx
 					                                 rekcall = ptIfmtch slts msk key newval compval
-								--TODO check if Slot is Kempty and compval==match any, then break and return T
+								-- TODO check if Slot is Kempty and compval==match any, then break and return T
 				                                     keyfits <- helper2 slt
 				                                     if keyfits 
 					                                  then
@@ -473,15 +484,15 @@ putIfMatch kvs key putVal expVal = do
 				where helper2 :: Slot key val -> IO Bool
 				      helper2 slt = do (success, cased) <- casKeySlot slt key
 						       if cased then incSlotsCntr else return () 
---TODO doing a simple check before the expensive cas should not be harmfull, because of the monotonic nature of keys
+-- TODO doing a simple check before the expensive cas should not be harmfull, because of the monotonic nature of keys
 						       return success 		 
 					--set the value, return old value
 				      setval :: Slot key val -> Value val -> ValComp val -> IO((Bool,Value val))
-		       		      setval slt newval oldvalcmp = casValueSlot slt oldvalcmp newval --TODO remove indirction
-				      --TODO if T to Value inc size counter, if V to T or S dec size counter
+		       		      setval slt newval oldvalcmp = casValueSlot slt oldvalcmp newval -- TODO remove indirction
+				      -- TODO if T to Value inc size counter, if V to T or S dec size counter
 				      opSizeCntr :: Value val -> Value val -> IO()
 				      opSizeCntr T (V _)      = incSizeCounter kvs
-				      opSizeCntr T (Vp _)     = incSizeCounter kvs --TODO debatable Primes are used for 2 stage copy so I need a detialed plan on how to count size during copys, in effect once a key val pair becomes available size increases it becomes unavailiable decreases
+				      opSizeCntr T (Vp _)     = incSizeCounter kvs -- TODO debatable Primes are used for 2 stage copy so I need a detialed plan on how to count size during copys, in effect once a key val pair becomes available size increases it becomes unavailiable decreases
 				      opSizeCntr T S          = return ()
 				      opSizeCntr (V _) (Vp _) = return ()
 				      opSizeCntr (V _ )(V _)  = return ()
@@ -490,15 +501,15 @@ putIfMatch kvs key putVal expVal = do
 				      opSizeCntr (V _)  S     =  decSizeCounter kvs	
 				      opSizeCntr (Vp _) (V _) = return () 
 				      --opSizeCntr _ _          = return ()				
-				      --TODO check witch changes are possible and witch arnt
-				      --TODO save sizecntr operationd on resize
-					--TODO what if T T
+				      -- TODO check witch changes are possible and witch arnt
+				      -- TODO save sizecntr operationd on resize
+					-- TODO what if T T
 
 
 				      incSlotsCntr :: IO()
 				      incSlotsCntr = incSlotsCounter kvs
 
---TODO add reprobe count			
+-- TODO add reprobe count			
 -- counter functions
 ------------------------------------------------------------------------------------------------------------------------
 -- | Increments the counter of used slots in the array.
@@ -510,7 +521,7 @@ incSlotsCounter kvs = do let counter = slotsCounter kvs
 incSizeCounter :: Kvs key value -> IO ()
 incSizeCounter kvs = do let counter = sizeCounter kvs
 			incrCounter_ 1 counter
---TODO possibly parameter table
+-- TODO possibly parameter table
 
 decSizeCounter :: Kvs key value -> IO ()
 decSizeCounter kvs = do let counter = sizeCounter kvs
@@ -526,7 +537,7 @@ readSizeCounter kvs = do let counter = sizeCounter kvs
 
 newSizeCounter :: IO(SizeCounter) 
 newSizeCounter = newCounter 0
---TODO possibly parameter table
+-- TODO possibly parameter table
 --Exported functions
 
 -- kvs functions
@@ -541,14 +552,14 @@ getNextKvs :: Kvs key val -> IO(Kvs key val)
 getNextKvs kv = do let kvsref =  newkvs kv  --throws error
 		   nwkvs <- readIORef kvsref
 		   return $ fromJust nwkvs 	  
---TODO change if structure of kvs changes
+-- TODO change if structure of kvs changes
 
 --Is a resize in progress?
 hasNextKvs :: Kvs key val -> IO Bool
 hasNextKvs kv =  do let kvsref = newkvs kv
                     nwkvs <- readIORef kvsref
 		    return $ isJust nwkvs
---TODO possibly change return type to IO BOOL
+-- TODO possibly change return type to IO BOOL
 
 noKvs :: IO (IORef (Maybe (Kvs key val)))
 noKvs = newIORef Nothing
@@ -560,8 +571,8 @@ casNextKvs kvs nwkvs = do let kvsref = newkvs kvs
 			  oldticket <- readForCAS kvsref
 			  if isJust $ peekTicket oldticket then return False else do (success, _) <- casIORef kvsref oldticket (Just nwkvs)
 			   						             return $ success
- --TODO rewrite the other cas stuff accordigly
---TODO (Just IORef a) is a stupid construction because seting the IORef from Nothing to Just changes an immutable datastructure also you cant do an cas on the Maybe type, todo have some value of IORef that says nothing
+ -- TODO rewrite the other cas stuff accordigly
+-- TODO (Just IORef a) is a stupid construction because seting the IORef from Nothing to Just changes an immutable datastructure also you cant do an cas on the Maybe type, todo have some value of IORef that says nothing
 -------------------------------------------------------------------------------------------------------------
 
 -- | Returns the number of key-value mappings in this map
@@ -591,12 +602,12 @@ containsValue :: (Eq val) => ConcurrentHashTable key val -> val -> IO(Bool)
 containsValue table val = do let kvsref = kvs table
 			     kv <- readIORef kvsref
 			     containsVal kv (V val)
---TODO low priority
---TODO adopt if changes to data representation
---TODO adopt to resize
+-- TODO low priority
+-- TODO adopt if changes to data representation
+-- TODO adopt to resize
 
 
---TODO search should break off once found
+-- TODO search should break off once found
 containsVal :: forall key val. (Eq val) => Kvs key val -> Value val -> IO(Bool)
 containsVal kvs val = do let slts = slots kvs
                          anyM (pred val) slts
@@ -612,9 +623,9 @@ containsVal kvs val = do let slts = slots kvs
 				where g :: Bool -> a -> (m Bool)
               			      g akk content = do testresult <- test content
 				                         return $ testresult || akk
---TODO adopt to resizing, (by recursivly calling for newkvs) anyway what about primed, I should read that up
---TODO for this the linearisation point for inputing would be the cas on value even if the cas on key has not be done yet, actually its better to think about this for a while, maybe not export this function for a while
---TODO no reason anyM should not be inlined
+-- TODO adopt to resizing, (by recursivly calling for newkvs) anyway what about primed, I should read that up
+-- TODO for this the linearisation point for inputing would be the cas on value even if the cas on key has not be done yet, actually its better to think about this for a while, maybe not export this function for a while
+-- TODO no reason anyM should not be inlined
 
 put :: (Eq val,Eq key, Hashable key) => 
        ConcurrentHashTable key val -> key -> val -> IO( Maybe val)
@@ -623,7 +634,7 @@ put table key val = do old <- putIfMatch_T table key (V val) (Right NO_MATCH_OLD
 --puts the value if there is no value matched to the key
 putIfAbsent :: (Eq val,Eq key, Hashable key) => 
                ConcurrentHashTable key val -> key -> val -> IO( Maybe val)
-putIfAbsent table key val = do old <- putIfMatch_T table key (V val) (Left T) --TODO is tombstone correct, what if there is a primed vaue 
+putIfAbsent table key val = do old <- putIfMatch_T table key (V val) (Left T) -- TODO is tombstone correct, what if there is a primed vaue 
 			       return $ unwrapValue old
 
 -- | Removes the key (and its corresponding value) from this map.
@@ -662,15 +673,15 @@ clearHint table hint = do let size = normSize hint
 		          szcntr <- newSizeCounter
                           kvs <- newKvs size szcntr
 			  writeIORef kvsref kvs
---TODO rewrite in case type of ConcurrentHashTable changes
+-- TODO rewrite in case type of ConcurrentHashTable changes
 
 
 -- | Returns the value to which the specified key is mapped.
 get :: (Eq key, Hashable key) => 
        ConcurrentHashTable key val -> key ->  IO( Maybe val)
-get table key = do let fullhash = hash key --TODO use the right hashfunctio here
+get table key = do let fullhash = hash key -- TODO use the right hashfunctio here
 		   topkvs <- readIORef $ kvs table            
-		   result <- get_impl table topkvs key fullhash --TODO_HASH
+		   result <- get_impl table topkvs key fullhash -- TODO_HASH
 		   return $ unwrapValue result
 
 
@@ -691,7 +702,7 @@ newConcurrentHashTableHint hint = do let size = normSize hint
 				     kvsref <- newIORef kvs
 
 				     return $ ConcurrentHashTable kvsref                                    
---TODO throw error if size <0
+-- TODO throw error if size <0
 
 -- | Returns the next larger potency of 2
 -- In case inputSize is potency of 2 : identity
@@ -710,22 +721,22 @@ newKvs size  counter = do let msk = getMask size
 	                  return $ Kvs kvsref slts msk sltcntr counter
 	where
 		newSlots :: Size -> IO( Slots key val)
-		newSlots size = V.replicateM size newSlot --TODO
+		newSlots size = V.replicateM size newSlot -- TODO
 		newSlotsCounter :: IO(SlotsCounter)
 		newSlotsCounter = newCounter 0
 		newSlot	:: IO(Slot key val)
 		newSlot = do keyref <- newIORef Kempty
-			     valref <- newIORef T     --TODO optimize somewhere, somewhat 
+			     valref <- newIORef T     -- TODO optimize somewhere, somewhat 
 			     return $ Slot keyref valref 
 		
 
---Debug code --TODO make inclusion conditional with preprocessor or something for DEBUG only
+--Debug code -- TODO make inclusion conditional with preprocessor or something for DEBUG only
 ----------------------------------------------------------------------------------------------------------------------------------------------------
 
---TODO shorten the output and make it more readable
+-- TODO shorten the output and make it more readable
 class DebugShow a where
         debugShow :: a -> IO String
---TODO Automatic indentation, ask on Stack Overflow about it.
+-- TODO Automatic indentation, ask on Stack Overflow about it.
 --Debug print for the Hashtable
 instance (Show k, Show v) => DebugShow (ConcurrentHashTable k v) where
         debugShow ht = do kvs <- getHeadKvs ht
@@ -768,7 +779,7 @@ instance DebugShow Mask where
 instance DebugShow AtomicCounter where
         debugShow counter = do number <- readCounter counter
 			       return $ "Countervalue: " ++ (show number) ++ "\n" 
---TODO number the slots
+-- TODO number the slots
 instance forall k v. (Show k, Show v) => DebugShow (Slots k v) where
         debugShow slts = do str <- return $ "Vector length: " ++ (show $ V.length slts) ++ "\n"
                             V.foldM' g str slts where
@@ -781,8 +792,8 @@ instance (Show k, Show v) => DebugShow (Slot k v) where
 		           val <- readValueSlot slt
 		           return $ "Key:\n" ++ (show key) ++ "\nValue:\n" ++ (show val) ++ "\n"
 
-instance (Show k) => Show (Key k) where --TODO keys get primed
-	show (Key h key) = "Key: " ++ (show key)  --TODO show FullHash 
+instance (Show k) => Show (Key k) where -- TODO keys get primed
+	show (Key h key) = "Key: " ++ (show key)  -- TODO show FullHash 
 	show Kempty  = "Key empty"
 
 instance (Show v) => Show (Value v) where
@@ -822,7 +833,7 @@ getSlotsCounters ::ConcurrentHashTable k v-> IO [Int]
 getSlotsCounters ht = mapOnKvs ht readSlotsCounter
 
 countUsedSlots :: ConcurrentHashTable k v ->  IO [Int]
-countUsedSlots ht = countSlotsWithPredicate ht (\s -> fmap not (isKEmptySlot s) ) --TODO use point operator
+countUsedSlots ht = countSlotsWithPredicate ht (\s -> fmap not (isKEmptySlot s) ) -- TODO use point operator
 
 countSlotsWithPredicate :: ConcurrentHashTable k v-> (Slot k v -> IO Bool) -> IO [Int]
 countSlotsWithPredicate ht predicate = mapOnKvs ht (countSlots predicate)
@@ -846,5 +857,5 @@ mapOnKvs ht fun = do kvs <- getHeadKvs ht
 
 --write an assertio for resize
 
---TODO Assert each kvs does not contain the same key twice
+-- TODO Assert each kvs does not contain the same key twice
 
