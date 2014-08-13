@@ -10,8 +10,7 @@ PKGS=" ./"
 # NOTE: uses env vars JENKINS_GHC and CABAL_FLAGS, if available.
 #       Also passes through extra args to the major cabal install command.
 
-set -e
-set -x
+set -xe
 
 SHOWDETAILS=always
 # SHOWDETAILS=streaming
@@ -31,6 +30,8 @@ else
   fi
   GHC=ghc-$JENKINS_GHC
 fi
+
+which -a $GHC || echo "Warning: GHC not found in path!"
 
 TOP=`pwd`
 $CABAL sandbox init
