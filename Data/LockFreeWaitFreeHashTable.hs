@@ -62,7 +62,7 @@ import Control.Monad.ST (runST)
 import Data.Word (Word32)
 
 
-import Numeric (showIntAtBase) --FIXME for debug only
+import Numeric (showIntAtBase) -- FIXME for debug only
 import Data.Char (intToDigit)       --dito
 
 
@@ -72,6 +72,10 @@ min_size = 2 ^ min_size_log --must be power of 2, compiler should turn this into
 
 max_size_log = 31
 max_size = 2 ^ 31
+-- TODO put this value in the haddock documentation
+
+-- FIXME whats the defined behaviour, if the hashtable gets really full, better, to throw an error, than to somehow fail or hang
+-- TODO is there an suitable error to be thrown
 
 _reprobe_limit = 10
 
@@ -265,7 +269,8 @@ maskHash mask hsh = hsh .&. mask
 
 
 
---variant of single word Wang/Jenkins Hash
+-- | variant of single word Wang/Jenkins Hash
+-- see line 262 <https://github.com/boundary/high-scale-lib/blob/master/src/main/java/org/cliffc/high_scale_lib/NonBlockingHashtable.java>
 spreadHash :: Int -> Int   
 spreadHash input = runST $ do h <- return $ input + ( (shiftL input 15) `xor` 0xffffcd7d)
 			      h <- return $ h `xor` (unsignedShiftR h 10)
@@ -275,9 +280,7 @@ spreadHash input = runST $ do h <- return $ input + ( (shiftL input 15) `xor` 0x
 			      return $ h `xor` (unsignedShiftR h 16)
 	where unsignedShiftR :: Int -> Int -> Int
 	      unsignedShiftR input len= fromIntegral (shiftR ((fromIntegral input)::Word32) len) 
---see line 262 https://github.com/boundary/high-scale-lib/blob/master/src/main/java/org/cliffc/high_scale_lib/NonBlockingHashtable.java
--- TODO use this to generate fullhash
--- TODO remove explicit generation of fullhash except in key contructor
+
 
 
 
@@ -295,10 +298,10 @@ isKEmptySlot slot = do slotkey <- readKeySlot slot
 		       return $ isKEmpty slotkey
 
 
--- see get
+-- see 'get'
 -- reading during resize is already imlemented
 get_impl :: (Eq key, Hashable key) => 
-            ConcurrentHashTable key val -> Kvs key val -> Key key  -> IO(Value val) -- TODO_Hash
+            ConcurrentHashTable key val -> Kvs key val -> Key key  -> IO(Value val)
 get_impl table kvs key          = do let msk = mask kvs
                                          slts = slots kvs
 				     slt <- getSlot  slts msk key
@@ -390,7 +393,7 @@ casStripPrime slt@(Slot _ va) = do oldticket <- readForCAS va
 	      stripPrime (Vp a) = V a
 	      stripPrime Tp = T
 	      stripPrime unprimed = unprimed
-               --get a reference to the value, --what about tickets
+               --get a reference to the value, 
                -- if not a prime, then write has already happend -> end
                -- else contruct an unprimed value, and a reference to it
                -- cas that agaist the original reference if failed because somebody already wrote an value then ->end
@@ -419,7 +422,7 @@ copyOnePair slt newkvs = do undefined -- TODO read Slot
 	      putAndReturnSlot key val kvs = undefined
     
 
--- removes the oldest kvs from the ht
+-- | removes the oldest kvs from the ht
 --throws error, if there is no resize in progress and thus only one kvs
 --some other routine has to determine that the oldest kvs is completly copied, and that the routine is not called multiple times for the same kvs
 -- maybe there has to be an cas used 
@@ -560,7 +563,6 @@ hasNextKvs :: Kvs key val -> IO Bool
 hasNextKvs kv =  do let kvsref = newkvs kv
                     nwkvs <- readIORef kvsref
 		    return $ isJust nwkvs
--- TODO possibly change return type to IO BOOL
 
 noKvs :: IO (IORef (Maybe (Kvs key val)))
 noKvs = newIORef Nothing
@@ -598,7 +600,10 @@ containsKey table key = do
 			return $ not $ value == Nothing
 
 
-
+-- | Tests if the value is in the table.
+--
+--  __Attention:__ Unlike access by keys this is /computationaly very expensive,/ since it requires an traversal of the entire table.
+--  If you do this a lot, you need a different datastructure. 
 containsValue :: (Eq val) => ConcurrentHashTable key val -> val -> IO(Bool)
 containsValue table val = do let kvsref = kvs table
 			     kv <- readIORef kvsref
@@ -630,13 +635,18 @@ containsVal kvs val = do let slts = slots kvs
 
 -- | puts the key-value mapping in the table, thus overwriting any pervious mapping of the key to an value
 put :: (Eq val,Eq key, Hashable key) => 
-       ConcurrentHashTable key val -> key -> val 
+       ConcurrentHashTable key val -> key 
+       -> val 
        -> IO( Maybe val) -- ^ Just oldvalue if the key was mapped to an value perviously, Nothing if the key was not mapped to any value
 put table key val = do old <- putIfMatch_T table key (V val) (Right NO_MATCH_OLD)
                        return $ unwrapValue old
 -- | puts the value if there is no value matched to the key
 putIfAbsent :: (Eq val,Eq key, Hashable key) => 
-               ConcurrentHashTable key val -> key -> val -> IO( Maybe val)
+               ConcurrentHashTable key val 
+	       -> key 
+	       -> val 
+	       -> IO( Maybe val) -- ^ 'Just' oldvalue if there was an mappig from key (/thus the put WAS NOT done/), 'Nothing' if there wasn't an
+				 -- mapping (/thus the put WAS done/)
 putIfAbsent table key val = do old <- putIfMatch_T table key (V val) (Left T) -- TODO is tombstone correct, what if there is a primed vaue 
 			       return $ unwrapValue old
 
@@ -684,7 +694,8 @@ clearHint table hint = do let size = normSize hint
                           kvs <- newKvs size szcntr
 			  writeIORef kvsref kvs
 -- TODO rewrite in case type of ConcurrentHashTable changes
-
+-- TODO the java version uses a kvsCAS here
+-- TODO write an concurrent testcase for this
 
 -- | Returns the value to which the specified key is mapped.
 get :: (Eq key, Hashable key) => 
@@ -867,4 +878,8 @@ mapOnKvs ht fun = do kvs <- getHeadKvs ht
 --write an assertio for resize
 
 -- TODO Assert each kvs does not contain the same key twice
+
+
+
+-- TODO write comments on the interface
 
