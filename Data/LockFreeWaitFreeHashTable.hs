@@ -583,7 +583,7 @@ size table = do let kvsref= kvs table
 		readSizeCounter kvs 
 
 
-
+-- | Returns True if there are no key-value mappings
 isEmpty :: ConcurrentHashTable key val -> IO(Bool)
 isEmpty table = do
 		 s <- size table
@@ -628,11 +628,13 @@ containsVal kvs val = do let slts = slots kvs
 -- TODO for this the linearisation point for inputing would be the cas on value even if the cas on key has not be done yet, actually its better to think about this for a while, maybe not export this function for a while
 -- TODO no reason anyM should not be inlined
 
+-- | puts the key-value mapping in the table, thus overwriting any pervious mapping of the key to an value
 put :: (Eq val,Eq key, Hashable key) => 
-       ConcurrentHashTable key val -> key -> val -> IO( Maybe val)
+       ConcurrentHashTable key val -> key -> val 
+       -> IO( Maybe val) -- ^ Just oldvalue if the key was mapped to an value perviously, Nothing if the key was not mapped to any value
 put table key val = do old <- putIfMatch_T table key (V val) (Right NO_MATCH_OLD)
                        return $ unwrapValue old
---puts the value if there is no value matched to the key
+-- | puts the value if there is no value matched to the key
 putIfAbsent :: (Eq val,Eq key, Hashable key) => 
                ConcurrentHashTable key val -> key -> val -> IO( Maybe val)
 putIfAbsent table key val = do old <- putIfMatch_T table key (V val) (Left T) -- TODO is tombstone correct, what if there is a primed vaue 
@@ -640,26 +642,33 @@ putIfAbsent table key val = do old <- putIfMatch_T table key (V val) (Left T) --
 
 -- | Removes the key (and its corresponding value) from this map.
 removeKey :: (Eq val, Eq key, Hashable key) =>
-             ConcurrentHashTable key val -> key -> IO( Maybe val)
+             ConcurrentHashTable key val -> key 
+	     -> IO( Maybe val) -- ^ 'Just' oldvalue if removed, Nothing if key-value mapping was not in table
 removeKey table key  = do old <- putIfMatch_T table key T (Right NO_MATCH_OLD)
 		          return $ unwrapValue old
 
 -- | Removes key if matched.
 remove :: (Eq val, Eq key, Hashable key) =>
-          ConcurrentHashTable key val -> key -> val -> IO( Bool)
+          ConcurrentHashTable key val -> key -> val
+	  -> IO( Bool) -- ^ 'True' if key-value mapping removed, False key-value mapping was not in table
 remove table key val = do old <- putIfMatch_T table key T (Left (V val))
                           return $  (unwrapValue old) == Just val  
 
 
 -- | do a put if the key is already mapped to some value
 replace :: (Eq val, Eq key, Hashable key) =>
-	   ConcurrentHashTable key val -> key -> val -> IO( Maybe val)
+	   ConcurrentHashTable key val -> key -> val 
+	   -> IO( Maybe val) -- ^ Just old value if replaced, Nothing if not replaced
 replace table key val = do old <- putIfMatch_T table key (V val) (Right MATCH_ANY)
                            return $ unwrapValue old
 
--- | do a put if the key is already mapped to the old value
+-- | do a put if the key is already mapped to the old value 
 replaceTest :: (Eq val, Eq key, Hashable key) =>
-               ConcurrentHashTable key val -> key -> val -> val -> IO(Bool)
+               ConcurrentHashTable key val 
+	       -> key -- ^ key
+	       -> val -- ^ new value
+	       -> val -- ^ old value 
+	       -> IO(Bool) -- ^ True if replaced
 replaceTest table key newval oldval= do old <- putIfMatch_T table key (V newval) (Left (V oldval))
                                         return $  (unwrapValue old) == Just oldval 
 
@@ -667,7 +676,7 @@ replaceTest table key newval oldval= do old <- putIfMatch_T table key (V newval)
 clear :: ConcurrentHashTable key val -> IO()
 clear table = clearHint table min_size 
 
--- | Removes all of the mappings from this map, number of slots to next largest power of 2
+-- | Removes all of the mappings from this map, number of slots to next largest power of 2. See: 'newConcurrentHashTableHint'.
 clearHint :: ConcurrentHashTable key val -> Size -> IO()
 clearHint table hint = do let size = normSize hint
                               kvsref = kvs table

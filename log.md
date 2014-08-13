@@ -490,6 +490,7 @@ very easy to understand, as long as you ignore the informal descriptions
  - https://travis-ci.org/MathiasBartl/Concurrent_Datastructures/builds/32454514
  - https://travis-ci.org/MathiasBartl/Concurrent_Datastructures/jobs/32454515
  - http://www.haskell.org/haddock/doc/html/index.html
+ - http://haskell-web.blogspot.com.es/2014/05/separation-of-concerns-by-problem.html
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
