@@ -487,6 +487,9 @@ very easy to understand, as long as you ignore the informal descriptions
 #  13.08.2014
 
  - http://en.wikipedia.org/wiki/Travis_CI
+ - https://travis-ci.org/MathiasBartl/Concurrent_Datastructures/builds/32454514
+ - https://travis-ci.org/MathiasBartl/Concurrent_Datastructures/jobs/32454515
+ - http://www.haskell.org/haddock/doc/html/index.html
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

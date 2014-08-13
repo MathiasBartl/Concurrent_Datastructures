@@ -298,20 +298,20 @@ isKEmptySlot slot = do slotkey <- readKeySlot slot
 -- see get
 -- reading during resize is already imlemented
 get_impl :: (Eq key, Hashable key) => 
-            ConcurrentHashTable key val -> Kvs key val -> key -> FullHash -> IO(Value val) -- TODO_Hash
-get_impl table kvs key fullhash = do let msk = mask kvs
+            ConcurrentHashTable key val -> Kvs key val -> Key key  -> IO(Value val) -- TODO_Hash
+get_impl table kvs key          = do let msk = mask kvs
                                          slts = slots kvs
-				     slt <- getSlot  slts msk (newKey key)-- TODO pass fullhash
+				     slt <- getSlot  slts msk key
 				     k <- readKeySlot slt
 				     v <- readValueSlot slt
-				     if keyComp k ( newKey key) -- TODO are there primed keys
+				     if keyComp k key
                                         then if isSentinel v  
 						then do ass <- hasNextKvs kvs
 							return $ assert ass 
 							newkvs <- getNextKvs kvs
-							get_impl table newkvs key fullhash --look in resized table
+							get_impl table newkvs key  --look in resized table
 						else return v 
-                                     	else return T  -- TODO use hash-caching for keycompare
+                                     	else return T  
 -- TODO actually we could use IO(Maybe (Value val)) as return type
 -- TODO attention may return a primed value			
 -- TODO treat resize
@@ -680,9 +680,8 @@ clearHint table hint = do let size = normSize hint
 -- | Returns the value to which the specified key is mapped.
 get :: (Eq key, Hashable key) => 
        ConcurrentHashTable key val -> key ->  IO( Maybe val)
-get table key = do let fullhash = hash key -- TODO use the right hashfunctio here
-		   topkvs <- readIORef $ kvs table            
-		   result <- get_impl table topkvs key fullhash -- TODO_HASH
+get table key = do topkvs <- getHeadKvs table            
+		   result <- get_impl table topkvs (newKey key) 
 		   return $ unwrapValue result
 
 
