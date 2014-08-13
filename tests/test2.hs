@@ -45,8 +45,7 @@ tests = TestList [ TestLabel "test1" test1,
  TestLabel "containsValue" test_containsValue,
  TestLabel "containsKey" test_containsKey,
  TestLabel "newConcurrentHashTableHint" test_newConcurrentHashTableHint
- -- RRN: Disabling KNOWN FAILURE for now.  See issue #18
- -- TestLabel "unnecessary_key_writes" test_unnecessary_key_writes
+ ,TestLabel "unnecessary_key_writes" test_unnecessary_key_writes
  ]
 
 tests_debugcode = TestList [ TestLabel "getNumberOfOngoingResizes" test_debugcode_getNumberOfOngoingResizes

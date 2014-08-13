@@ -482,7 +482,11 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://www.haskell.org/haskellwiki/Converting_numbers
  - http://www.haskell.org/haskellwiki/Dealing_with_binary_data
  - https://hackage.haskell.org/package/base-4.1.0.0/docs/Data-Int.html 
-.Coercing word types (see Data.Word) to and from integer types preserves representation, not sign. 
+.Coercing word types (see Data.Word) to and from integer types preserves representation, not sign.
+.
+#  13.08.2014
+
+ - http://en.wikipedia.org/wiki/Travis_CI
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
