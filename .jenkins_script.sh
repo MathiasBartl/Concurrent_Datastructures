@@ -13,10 +13,13 @@ PKGS=" ./"
 set -e
 set -x
 
-# Temporarily staying off of 1.20 due to cabal issue #1811:
-CABAL=cabal-1.18.0
 SHOWDETAILS=always
 # SHOWDETAILS=streaming
+
+if [ "$CABAL" == "" ]; then 
+  # Temporarily staying off of 1.20 due to cabal issue #1811:
+  CABAL=cabal-1.18.0
+fi 
 
 if [ "$JENKINS_GHC" == "" ]; then 
   GHC=ghc
