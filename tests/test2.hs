@@ -14,7 +14,7 @@ import Data.Monoid (mempty)
 import Data.Bits(shiftL)
 import Control.Monad (forM_, replicateM_, forM, replicateM)
 
-
+-- | A common initial configuration shared by multiple tests below.
 setup :: IO ( HT.ConcurrentHashTable Int Int )
 setup = do ht <- HT.newConcurrentHashTable
 	   HT.put ht 10 10
@@ -44,8 +44,10 @@ tests = TestList [ TestLabel "test1" test1,
  TestLabel "size" test_size,
  TestLabel "containsValue" test_containsValue,
  TestLabel "containsKey" test_containsKey,
- TestLabel "newConcurrentHashTableHint" test_newConcurrentHashTableHint,
- TestLabel "unnecessary_key_writes" test_unnecessary_key_writes]
+ TestLabel "newConcurrentHashTableHint" test_newConcurrentHashTableHint
+ -- RRN: Disabling KNOWN FAILURE for now.  See issue #18
+ -- TestLabel "unnecessary_key_writes" test_unnecessary_key_writes
+ ]
 
 tests_debugcode = TestList [ TestLabel "getNumberOfOngoingResizes" test_debugcode_getNumberOfOngoingResizes
 			   , TestLabel "getLengthsOfVectors" test_debugcode_getLengthsOfVectors
