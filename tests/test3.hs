@@ -136,7 +136,7 @@ lotsof_put :: ( HT.ConcurrentHashTable Int Int ) -> [Int] -> IO [Maybe Int]
 lotsof_put ht inp = do forM_ inp (\int -> HT.put ht int int)
 		       forM inp (\int -> HT.get ht int)
 
-
+--TODO test withou resize, no puts are forgotten
 
 --tests = TestList [ TestLabel "lotsof_put" test_lotsof_put]
 tests = TestList []  --FIXME get the resize relatet tests going with a time limit

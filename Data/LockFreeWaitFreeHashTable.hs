@@ -432,6 +432,7 @@ putIfMatch_T table key putVal expVal = do let ky = newKey key
 --TODO, do we need to pass the Hashtable as parameter?
 --TODO use only by acessor functions, not by resizing algorithm
 --TODO assert key is not empty, putval is no empty, but possibly a tombstone, key value are not primed 
+--TODO assert, does not return an primed value
 putIfMatch :: forall key val. (Hashable key, Eq key, Eq val) =>
               Kvs key val -> Key key -> Value val -> ValComp val -> IO (Value val)
 putIfMatch kvs key putVal expVal = do
@@ -448,7 +449,8 @@ putIfMatch kvs key putVal expVal = do
   
   oldKey <-  readKeySlot slot
   if isKEmpty oldKey --if putvall TMBSTONE and oldkey == empty do nothing --TODO put this lines into an subfunction
-    then if (isTombstone putVal)
+    then if ((isTombstone putVal) || expVal == Right MATCH_ANY || if isLeft expVal then not $ isTombstone $ fromLeft expVal else False)
+ -- if oldkey empty and MATCH_ANY do nothing
          then return T {-TODO break writing value unnecessary -} 
          else ptIfmtch slts msk key putVal expVal idx newReprobeCounter --TODO remove line duplication
     else ptIfmtch slts msk key putVal expVal idx newReprobeCounter  
