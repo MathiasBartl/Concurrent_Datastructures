@@ -58,6 +58,7 @@ $CABAL install $CFG $CABAL_FLAGS --with-ghc=$GHC $PKGS  $*
 
 GHC_VER=`$GHC --version | egrep -o '[0123456789]+\.[0123456789]+\.[0123456789]+'`
 MAJOR=`echo $GHC_VER | sed 's/\.[[:digit:]]*$//'`
+# RRN: bc is not on travis by default:
 OLDVER=`echo "$MAJOR < 7.8" | bc`
 
 # Avoiding the atomic-primops related bug on linux / GHC 7.6:
