@@ -18,7 +18,7 @@ Description:
 
   A lockfree, waitfree concurrent hashtable.
   Based on: 
-  https://github.com/boundary/high-scale-lib/blob/master/src/main/java/org/cliffc/high_scale_lib/NonBlockingHashtable.java
+  "https://github.com/boundary/high-scale-lib/blob/master/src/main/java/org/cliffc/high_scale_lib/NonBlockingHashtable.java"
 --TODO further description  
   .
 
