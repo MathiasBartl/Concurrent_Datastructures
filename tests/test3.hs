@@ -25,6 +25,8 @@ import Test.Framework (defaultMain, plusTestOptions)
 import Test.Framework.Providers.HUnit (hUnitTestToTests)
 import Test.Framework.Options ( TestOptions, TestOptions'(TestOptions), TestOptions')
 
+
+numberOfTests = TestOptions Nothing (Just 900) Nothing Nothing Nothing Nothing
 hint = 2 ^ 13
 range = [0..(2^12)]
 repetition = 2^36
@@ -43,6 +45,9 @@ data Inout = Put | Get deriving Show
 distribution = [(1,return Put),(3,return Get)]
 
 newtype HTActionParam = HTActionParam Int deriving (Eq, Show)
+
+--  instead of declaring newtyps and writing standart generators,
+-- leafing them as default types and use forall with custom genrators would also be possible
 
 instance Hashable HTActionParam where
 	hashWithSalt s (HTActionParam i) = hashWithSalt s i
@@ -86,7 +91,7 @@ prop2  params = QCM.monadicIO $ prop1 params
 --             testable) => testable ->  PAPI.Test --TODO witch type
 --test2 t = PQC.testProperty "test_consistency_without_resize" t
 test2 :: PAPI.Test
-test2 = PQC.testProperty "test_consistency_without_resize" prop2
+test2 = plusTestOptions numberOfTests (PQC.testProperty "test_consistency_without_resize" prop2)
 --TODO: testcase generator witch is in IO any case, best probably Quickcheck
 --Instance of arbitrary for HTAction
 

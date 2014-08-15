@@ -491,6 +491,28 @@ very easy to understand, as long as you ignore the informal descriptions
  - https://travis-ci.org/MathiasBartl/Concurrent_Datastructures/jobs/32454515
  - http://www.haskell.org/haddock/doc/html/index.html
  - http://haskell-web.blogspot.com.es/2014/05/separation-of-concerns-by-problem.html
+
+# 14.08.2014
+
+ - http://fdik.org/yml/
+ - http://en.wikipedia.org/wiki/YAML
+
+# 15.08.2014
+ 
+ - http://www.gnu.org/software/soc-projects/ideas-2013.html
+ - http://www.gnu.org/software/soc-projects/ideas-2014.html
+   project implementation of concurrent hashtable in CLISP
+ - http://en.wikipedia.org/wiki/CLISP
+ - https://gnunet.org/gsoc20147
+ - http://www.gnu.org/software/hurd/community/gsoc/project_ideas.html
+ - http://www.gnu.org/software/hurd/community/gsoc/project_ideas/valgrind.html
+ - https://gnunet.org/gsoc2014
+ - http://en.wikipedia.org/wiki/Behavior-driven_development
+ - http://www.cse.chalmers.se/~rjmh/QuickCheck/manual.html
+ - https://hackage.haskell.org/package/QuickCheck-2.4.2/docs/Test-QuickCheck.html
+ - https://hackage.haskell.org/package/test-framework-0.8.0.3/docs/Test-Framework-Options.html#t:TestOptions
+   here i should be able to set the number of quick test tests from 100 to 10000
+ - https://github.com/batterseapower/test-framework/pull/59
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
@@ -518,4 +540,5 @@ http://mechanical-sympathy.blogspot.de/2011/07/memory-barriersfences.html
 http://www.haskell.org/haskellwiki/Power_function
 https://hackage.haskell.org/package/base-4.7.0.0/docs/Control-Exception-Base.html
 https://hackage.haskell.org/package/base-4.7.0.0/docs/System-Mem-Weak.html#t:Weak
-
+http://wiki.octave.org/Summer_of_Code_Project_Ideas
+http://en.wikipedia.org/wiki/Behavior-driven_development

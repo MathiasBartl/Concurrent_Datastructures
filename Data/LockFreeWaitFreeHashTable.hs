@@ -375,6 +375,7 @@ casValueSlot slt@(Slot _ va) cmpvaluecomp newvalue = do
 	matchesVal oldvalue (Right MATCH_ANY) _ = not $ isTombstone oldvalue --oldvalue is not a tombstone  --FIXME, RESIZE related PRIMED,SENTINEL 
 	matchesVal oldvalue (Right NO_MATCH_OLD) newvalue = not $ valComp oldvalue newvalue -- newvalue != oldvalue 	
 	matchesVal oldvalue (Left cmpvalue) _ = valComp oldvalue cmpvalue --oldvalue == cmpvalue --FIXME, RESIZE related PRIMED,SENTINEL
+	casVal = undefined
 --matchesVal is resize ignorant
 -- TODO lets think about how to threat primed values
 
@@ -403,6 +404,30 @@ casStripPrime slt@(Slot _ va) = do oldticket <- readForCAS va
 
 --resizes stuff
 -----------------------------------------------------------------------------------------------------------------------
+
+
+
+--
+helpCopy :: ConcurrentHashTable key value -> Kvs key value -> IO(Kvs key value)
+helpCopy ht helper = do topkvs <- getHeadKvs ht
+			resizeinprogress <- hasNextKvs topkvs
+			if not resizeinprogress then return helper else do helpCopyImpl ht topkvs False
+								           return helper
+	where helpCopyImpl :: ConcurrentHashTable key value -> Kvs key value -> Bool -> IO ()
+	      helpCopyImpl ht oldkvs copyall = do newkvs <- getNextKvs oldkvs -- TODO assert hasNextKvs oldkvs == return True
+						  undefined			
+	      --TODO do we actually need to pass 2 seperate Kvs a parmeter, answer no java asserts that they are both the same		
+	
+-- TODO In the java code helper is passed as parameter ant the returned without any use, this is probably some sort of optimisation that I better leave out, using a wrapper is also about inlining
+
+-- TODO enter calls of helpCopy where apropriate
+
+resizeInProgress :: ConcurrentHashTable key value -> IO Bool
+resizeInProgress ht = do topkvs <- getHeadKvs ht
+			 hasNextKvs topkvs
+
+
+
 -- TODO, what happens to the slotscounter of the old kvs, how does the program know, that
 -- the old kvs has been completely copied
 copyOnePair :: Slot key value -> Kvs key value -> IO () 
@@ -432,6 +457,12 @@ removeOldestKvs ht = do let htKvsRef = kvs ht
 			secondOldestKvs <- getNextKvs oldestKvs   --throws error, if no resize is in progress        
 			writeIORef htKvsRef secondOldestKvs
 			--oldestKvs will be GCted, one could explicitly destroy oldestKvs here
+
+copySlotAndCheck = undefined
+
+copyCheckAndPromote = undefined
+
+--TODO: resize,  tableFull,  from java version
 -------------------------------------------------------------------------------------------------------------------------
 
 putIfMatch_T ::(Hashable key, Eq key, Eq value) =>
