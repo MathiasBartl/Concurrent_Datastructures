@@ -317,7 +317,7 @@ get_impl table kvs key          = do let msk = mask kvs
                                      	else return T  
 -- TODO actually we could use IO(Maybe (Value val)) as return type
 -- TODO attention may return a primed value			
--- TODO treat resize
+-- TODO treat resize -- TODO call helpCopy
 -- TODO count reprobes
 -- TODO only pass reference to table if necessary
 -- TODO fit get function with table resizing
@@ -408,19 +408,15 @@ casStripPrime slt@(Slot _ va) = do oldticket <- readForCAS va
 
 
 --
-helpCopy :: ConcurrentHashTable key value -> Kvs key value -> IO(Kvs key value)
-helpCopy ht helper = do topkvs <- getHeadKvs ht
-			resizeinprogress <- hasNextKvs topkvs
-			if not resizeinprogress then return helper else do helpCopyImpl ht topkvs False
-								           return helper
+helpCopy :: ConcurrentHashTable key value ->  IO ()
+helpCopy ht  = do topkvs <- getHeadKvs ht
+		  resizeinprogress <- hasNextKvs topkvs
+		  if not resizeinprogress then return () else helpCopyImpl ht topkvs False
 	where helpCopyImpl :: ConcurrentHashTable key value -> Kvs key value -> Bool -> IO ()
 	      helpCopyImpl ht oldkvs copyall = do newkvs <- getNextKvs oldkvs -- TODO assert hasNextKvs oldkvs == return True
 						  undefined			
-	      --TODO do we actually need to pass 2 seperate Kvs a parmeter, answer no java asserts that they are both the same		
 	
--- TODO In the java code helper is passed as parameter ant the returned without any use, this is probably some sort of optimisation that I better leave out, using a wrapper is also about inlining
-
--- TODO enter calls of helpCopy where apropriate
+-- TODO enter calls of helpCopy in the marked functions
 
 resizeInProgress :: ConcurrentHashTable key value -> IO Bool
 resizeInProgress ht = do topkvs <- getHeadKvs ht
@@ -458,11 +454,33 @@ removeOldestKvs ht = do let htKvsRef = kvs ht
 			writeIORef htKvsRef secondOldestKvs
 			--oldestKvs will be GCted, one could explicitly destroy oldestKvs here
 
-copySlotAndCheck = undefined
+copySlotAndCheck = undefined -- TODO
 
-copyCheckAndPromote = undefined
+copyCheckAndPromote = undefined -- TODO
 
---TODO: resize,  tableFull,  from java version
+resize :: ConcurrentHashTable key value -> Kvs key value -> IO (Kvs key value)
+resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
+		     if  hasnextkvs then do newkvs <- getNextKvs oldkvs
+					    return newkvs
+			else undefined -- TODO
+	where heuristicNewSize = undefined
+-- TODO write a routine with heuristics, on how big the new kvs should be
+-- TODO add time since last resize counter
+
+-- TODO add resize to putIfMatch
+
+-- TODO add tableFull to putIfMatch
+-- TODO Note, for performance sake an implementation of SlotsCounter that is only aproximatly accurate would fully suffice 
+-- | Heuristic to determine whether the kvs is so full, that an resize is recommended
+tableFull :: ReprobeCounter  -- ^ just to check if a resize s in order because of to many reprobes anyway
+	     -> Size         -- ^ the number of slots in the kvs 
+	     -> SlotsCounter -- ^ how many of them are in use 
+	     -> IO Bool
+tableFull recounter len sltcounter = do sltcn <- readCounter sltcounter
+					return $ recounter >= _reprobe_limit && --always allow a few reprobes
+				                 sltcn >= (reprobe_limit len)   -- kvs is quarter full
+
+
 -------------------------------------------------------------------------------------------------------------------------
 
 putIfMatch_T ::(Hashable key, Eq key, Eq value) =>
@@ -473,6 +491,7 @@ putIfMatch_T table key putVal expVal = do let ky = newKey key
 
 
 -- TODO write during resize
+-- TODO call helpCopy, resize, tableFull
 -- TODO refactor for readability/structure
 -- TODO, do we need to pass the Hashtable as parameter?
 -- TODO use only by acessor functions, not by resizing algorithm
