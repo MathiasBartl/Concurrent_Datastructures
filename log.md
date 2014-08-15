@@ -513,6 +513,7 @@ very easy to understand, as long as you ignore the informal descriptions
  - https://hackage.haskell.org/package/test-framework-0.8.0.3/docs/Test-Framework-Options.html#t:TestOptions
    here i should be able to set the number of quick test tests from 100 to 10000
  - https://github.com/batterseapower/test-framework/pull/59
+ - https://hackage.haskell.org/package/time-1.4.0.1/docs/Data-Time-Clock.html
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

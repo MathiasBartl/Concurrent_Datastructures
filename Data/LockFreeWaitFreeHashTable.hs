@@ -129,6 +129,8 @@ type Mask = SlotsIndex
 type Size = Int
 type SizeLog = Int
 
+type Time = Long -- ^ time in milliseconds
+
 type ReprobeCounter = Int
 
 newReprobeCounter = 0
@@ -463,7 +465,8 @@ resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
 		     if  hasnextkvs then do newkvs <- getNextKvs oldkvs
 					    return newkvs
 			else undefined -- TODO
-	where heuristicNewSize = undefined
+	where  heuristicNewSize  -> IO Size --requires time
+	       heuristicNewSize = undefined  --isIO
 -- TODO write a routine with heuristics, on how big the new kvs should be
 -- TODO add time since last resize counter
 
