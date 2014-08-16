@@ -66,13 +66,16 @@ import Data.Int (Int64)
 import Numeric (showIntAtBase) -- FIXME for debug only
 import Data.Char (intToDigit)       --dito
 
-
+-- TODO look for 32/64 bit issues, Magic Numbers
 
 min_size_log = 3
 min_size = 2 ^ min_size_log --must be power of 2, compiler should turn this into a constant
 
 max_size_log = 31
-max_size = 2 ^ 31
+max_size = 2 ^ max_size_log
+
+resize_milliseconds:: Time
+resize_milliseconds = 1000 -- FIXME question 1 second or 10 seconds
 -- TODO put this value in the haddock documentation
 
 -- FIXME whats the defined behaviour, if the hashtable gets really full, better, to throw an error, than to somehow fail or hang
@@ -468,9 +471,19 @@ resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
 					    return newkvs
 			else undefined -- TODO
 	where  heuristicNewSize:: Size -> SizeCounter -> Time -> Time -> SlotsCounter -> IO Size
-	       heuristicNewSize = undefined  --isIO
--- TODO write a routine with heuristics, on how big the new kvs should be
--- TODO add time since last resize counter
+	       heuristicNewSize len szcntr oldtime newtime sltcntr = do sz <- readCounter szcntr
+									slts <- readCounter sltcntr
+									newsze <- return sz
+									-- TODO assert len is posetive
+									newsze <- return $ if sz >= (shiftR len 2) then
+									   if sz >= (shiftR len 1) then  shiftL len 2 else shiftL len 1  else newsze
+									newsze <- return $ if (newsze <= len) 
+									  && (newtime - oldtime <= resize_milliseconds)
+									  && (slts >= (shiftL sz 1))  
+									  then shiftL len 1 else newsze
+									newsze <- return $ if newsze < len then len else newsze
+									return $ normSize newsze-- TODO assert table is not shrinking
+-- TODO more functional coding, or at least seperate ST, IO, handle time better
 
 -- TODO add resize to putIfMatch
 
