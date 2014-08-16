@@ -31,7 +31,7 @@
 --something like Data.HashTables.IO.NonBlocking.something
 --               Data.HashTables.IO.Concurrent.NonBlocking.something
 -- TODO make list of all Hashtable libraries in haskell and compare
-module Data.LockFreeWaitFreeHashTable 
+module Data.HashTable.Concurrent 
 	( 
           -- * Creating hash tables
           ConcurrentHashTable
@@ -60,6 +60,7 @@ import Data.Maybe (isJust, isNothing, fromJust)
 import Data.Either.Unwrap (fromLeft, isLeft, isRight, fromRight)
 import Control.Monad.ST (runST)
 import Data.Word (Word32)
+import Data.Int (Int64)
 
 
 import Numeric (showIntAtBase) -- FIXME for debug only
@@ -129,7 +130,7 @@ type Mask = SlotsIndex
 type Size = Int
 type SizeLog = Int
 
-type Time = Long -- ^ time in milliseconds
+type Time = Int64 -- ^ time in milliseconds -- TODO should be long or something
 
 type ReprobeCounter = Int
 
@@ -465,7 +466,8 @@ resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
 		     if  hasnextkvs then do newkvs <- getNextKvs oldkvs
 					    return newkvs
 			else undefined -- TODO
-	where  heuristicNewSize  -> IO Size --requires time
+	where  heuristicNewSize:: Size -> Time -> Time -> Size --requires time, -- TODO finish type signature,
+-- time of last resize, current time, oldsize, count of aactive pairs, count of slots
 	       heuristicNewSize = undefined  --isIO
 -- TODO write a routine with heuristics, on how big the new kvs should be
 -- TODO add time since last resize counter

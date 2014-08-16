@@ -514,6 +514,10 @@ very easy to understand, as long as you ignore the informal descriptions
    here i should be able to set the number of quick test tests from 100 to 10000
  - https://github.com/batterseapower/test-framework/pull/59
  - https://hackage.haskell.org/package/time-1.4.0.1/docs/Data-Time-Clock.html
+ - http://hackage.haskell.org/package/process-1.0.1.1/docs/System-Process.html
+ - https://hackage.haskell.org/package/base-4.6.0.1/docs/System-IO.html
+ - https://hackage.haskell.org/package/base-4.6.0.1/docs/System-IO.html
+ - https://hackage.haskell.org/package/time-1.4.0.1/docs/Data-Time-Clock-POSIX.html
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

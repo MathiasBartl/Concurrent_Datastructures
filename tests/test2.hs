@@ -3,7 +3,7 @@
 module Main where
 
 import Test.HUnit
-import qualified Data.LockFreeWaitFreeHashTable  as HT
+import qualified Data.HashTable.Concurrent  as HT
 
 import Test.Framework (defaultMain, plusTestOptions)
 import Test.Framework.Options ( TestOptions, TestOptions'(TestOptions), TestOptions')

@@ -8,7 +8,7 @@ module Main where
 
 
 --import Test.HUnit
-import qualified Data.LockFreeWaitFreeHashTable  as HT
+import qualified Data.HashTable.Concurrent  as HT
 
 import Control.Concurrent as C
 import Control.Concurrent.Async as A
