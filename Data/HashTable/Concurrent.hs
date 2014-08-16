@@ -59,7 +59,7 @@ import qualified Data.Vector as V
 import Data.Maybe (isJust, isNothing, fromJust)
 import Data.Either.Unwrap (fromLeft, isLeft, isRight, fromRight)
 import Control.Monad.ST (runST)
-import Data.Word (Word32)
+import Data.Word (Word) 
 import Data.Int (Int64)
 
 
@@ -125,6 +125,7 @@ type SlotsCounter = AtomicCounter
 type SizeCounter  = AtomicCounter
 
 type FullHash = SlotsIndex
+type FullHashUnsigned = Word
 type SlotsIndex = Int
 type Mask = SlotsIndex
 type Size = Int
@@ -274,7 +275,7 @@ maskHash mask hsh = hsh .&. mask
 
 -- | variant of single word Wang/Jenkins Hash
 -- see line 262 <https://github.com/boundary/high-scale-lib/blob/master/src/main/java/org/cliffc/high_scale_lib/NonBlockingHashtable.java>
-spreadHash :: Int -> Int   
+spreadHash :: FullHash -> FullHash   
 spreadHash input = runST $ do h <- return $ input + ( (shiftL input 15) `xor` 0xffffcd7d)
 			      h <- return $ h `xor` (unsignedShiftR h 10)
 			      h <- return $ h + (shiftL h 3) 
@@ -282,7 +283,7 @@ spreadHash input = runST $ do h <- return $ input + ( (shiftL input 15) `xor` 0x
 			      h <- return $ h + (shiftL h 2) + (shiftL h 14)
 			      return $ h `xor` (unsignedShiftR h 16)
 	where unsignedShiftR :: Int -> Int -> Int
-	      unsignedShiftR input len= fromIntegral (shiftR ((fromIntegral input)::Word32) len) 
+	      unsignedShiftR input len= fromIntegral (shiftR ((fromIntegral input)::FullHashUnsigned) len) 
 
 
 
@@ -466,8 +467,7 @@ resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
 		     if  hasnextkvs then do newkvs <- getNextKvs oldkvs
 					    return newkvs
 			else undefined -- TODO
-	where  heuristicNewSize:: Size -> Time -> Time -> Size --requires time, -- TODO finish type signature,
--- time of last resize, current time, oldsize, count of aactive pairs, count of slots
+	where  heuristicNewSize:: Size -> SizeCounter -> Time -> Time -> SlotsCounter -> IO Size
 	       heuristicNewSize = undefined  --isIO
 -- TODO write a routine with heuristics, on how big the new kvs should be
 -- TODO add time since last resize counter
