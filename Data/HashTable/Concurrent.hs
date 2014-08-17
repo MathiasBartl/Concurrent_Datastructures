@@ -250,15 +250,16 @@ isValue _ = False
 -- does not terminate if array is full, and key is not in it
 -- TODO possibly return whether the slot has a key or the key is empty
 -- TODO testcases for reprobe
+-- FIXME does not terminate if reprobes infinitly or very often, best would be to return an Maybe
 -- | Reprobes until it find an Slot with a fitting or empty key
 getSlot :: forall key value . (Eq key) =>  
            Slots key value -> Mask -> Key key -> IO(Slot key value, ReprobeCounter)
-getSlot slots mask key =  do	let fllhash = fullHash key
-				    idx = maskHash mask fllhash  
-				getSlt slots newReprobeCounter key idx mask
+getSlot slots mask key =  do let fllhash = fullHash key
+				 idx = maskHash mask fllhash  
+			     getSlt slots newReprobeCounter key idx mask
 		where full :: Key key -> Key key -> Bool
 		      full  Kempty _ = False
-		      full  k1 k2 = not (keyComp k1 k2) --Collison threatmet is done again whe CASing key
+		      full  k1 k2 = not (keyComp k1 k2) --Collison threatment is done again whe CASing key
 		      getSlt:: Slots key value -> ReprobeCounter -> Key key -> SlotsIndex -> Mask -> IO(Slot key value, ReprobeCounter)
 		      getSlt slots rpcntr newkey idx mask =
                         do let slot = (slots V.! idx) :: (Slot key value)
