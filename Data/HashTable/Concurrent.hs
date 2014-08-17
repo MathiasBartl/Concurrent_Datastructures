@@ -264,6 +264,13 @@ getSlot slots mask key =  do let fllhash = fullHash key
 		      getSlt slots rpcntr newkey idx mask =
                         do let slot = (slots V.! idx) :: (Slot key value)
                            oldkey <- (readKeySlot slot)::IO(Key key)
+			   -- TODO error that the table is not already full, then remove this assertion as soon as
+			   -- resizing works, this should make sure that tests that rely on resizing fail with an error instead of hang
+-- FIXME REMOVE
+			   sz <- return $ V.length slots
+			   if rpcntr > sz  -- every slot has already been probed
+				then return $ error "Table is full and resizing does not work." else return ()
+-- FIXME REMOVE
                            if full oldkey newkey 
                                        then getSlt slots (incReprobeCounter rpcntr) newkey (collision idx mask) mask -- Reprobe
                                        else return (slot,rpcntr) -- Found a Slot that has eiter an fitting or an empty key

@@ -531,6 +531,11 @@ very easy to understand, as long as you ignore the informal descriptions
  - https://github.com/ndmitchell/hlint#readme
  - http://docs.travis-ci.com/user/getting-started/
  - http://www.google-melange.com/gsoc/document/show/gsoc_program/google/gsoc2014/codeguidelines
+
+# 17.08.2014
+ - http://neilmitchell.blogspot.de/2009/09/how-i-use-hlint.html
+ - https://code.google.com/p/ndmitchell/issues/detail?id=637
+ - http://community.haskell.org/~ndm/darcs/hlint/hlint.htm
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
