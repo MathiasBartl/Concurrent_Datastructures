@@ -567,4 +567,4 @@ https://hackage.haskell.org/package/base-4.7.0.0/docs/System-Mem-Weak.html#t:Wea
 http://wiki.octave.org/Summer_of_Code_Project_Ideas
 http://en.wikipedia.org/wiki/Behavior-driven_development
 http://www.google-melange.com/gsoc/document/show/gsoc_program/google/gsoc2014/codeguidelines
-
+http://www.imore.com/debug-31-miguel-de-icaza-mono

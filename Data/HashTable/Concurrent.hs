@@ -521,6 +521,7 @@ putIfMatch_T table key putVal expVal = do let ky = newKey key
 -- TODO write during resize
 -- TODO call helpCopy, resize, tableFull
 -- TODO refactor for readability/structure
+-- TODO add reprobe counter
 -- TODO, do we need to pass the Hashtable as parameter?
 -- TODO use only by acessor functions, not by resizing algorithm
 -- TODO assert key is not empty, putval is no empty, but possibly a tombstone, key value are not primed 
@@ -531,20 +532,20 @@ putIfMatch kvs key putVal expVal = do
       slts = slots kvs
       fllhash = fullHash key  :: FullHash 
       idx = maskHash msk fllhash ::SlotsIndex --parameterise maskHash with kvs and key
-  --reprobe_cnt <- return 0
+ 
   -- TODO get highest kvs and test if a resize is running and then get the second highest kvs
-  return $ assert $ not $ isKEmpty key -- TODO use eq TODO this is not in the original
+  return $ assert $ not $ isKEmpty key -- TODO this is not in the original
   return $ assert $ not $ isPrimedValue putVal
   return $ assert $ not $ isPrimedValComp expVal
-  (slot, _)  <- (getSlot slts msk key) ::IO(Slot key val, ReprobeCounter) --TODO, either remove this or have it give back a reprobe counter
+  (slot, rpcntr)  <- (getSlot slts msk key) ::IO(Slot key val, ReprobeCounter) --TODO, either remove this or have it give back a reprobe counter
   
   oldKey <-  readKeySlot slot
   if isKEmpty oldKey --if putvall TMBSTONE and oldkey == empty do nothing -- TODO put this lines into an subfunction
     then if ((isTombstone putVal) || expVal == Right MATCH_ANY || if isLeft expVal then not $ isTombstone $ fromLeft expVal else False)
  -- if oldkey empty and MATCH_ANY do nothing
          then return T {-TODO break writing value unnecessary -} 
-         else ptIfmtch slts msk key putVal expVal idx newReprobeCounter -- TODO remove line duplication
-    else ptIfmtch slts msk key putVal expVal idx newReprobeCounter  
+         else ptIfmtch slts msk key putVal expVal idx rpcntr -- TODO remove line duplication
+    else ptIfmtch slts msk key putVal expVal idx rpcntr  
 -- TODO when would cas fail
      --actually does the putting after tests and special cases have been handled
      where ptIfmtch :: Slots key val -> Mask ->  Key key  -> Value val -> ValComp val ->
@@ -955,6 +956,8 @@ mapOnKvs ht fun = do kvs <- getHeadKvs ht
 								              mapOn newKvs
 			     return $ a:lst
 
+
+-- TODO write a debug function telling the ht to arbitaritly resize
 
 --todo generate arbitrary hashtables
 
