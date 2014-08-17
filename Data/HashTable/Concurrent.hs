@@ -250,23 +250,23 @@ isValue _ = False
 -- does not terminate if array is full, and key is not in it
 -- TODO, use fitting hash function and pass Key key
 getSlot :: forall key value . (Eq key) =>  
-           Slots key value -> Mask -> Key key -> IO(Slot key value)
+           Slots key value -> Mask -> Key key -> IO(Slot key value, ReprobeCounter)
 getSlot slots mask key =  do	let fllhash = fullHash key
 				    idx = maskHash mask fllhash  
-				slot <- getSlt slots key idx mask
+				(slot, rpcntr) <- getSlt slots newReprobeCounter key idx mask
 --collision treatment has to be done again on a write should the key cas fail
-				return slot
+				return (slot, rpcntr) -- TODO remove this return
 		where full :: Key key -> Key key -> Bool
 		      full  Kempty _ = False
 		      full  k1 k2 = not (keyComp k1 k2)
-		      getSlt:: Slots key value -> Key key -> SlotsIndex -> Mask -> IO(Slot key value)
-		      getSlt slots newkey idx mask =
+		      getSlt:: Slots key value -> ReprobeCounter -> Key key -> SlotsIndex -> Mask -> IO(Slot key value, ReprobeCounter)
+		      getSlt slots rpcntr newkey idx mask =
                         do let slot = (slots V.! idx) :: (Slot key value)
                            oldkey <- (readKeySlot slot)::IO(Key key)
-                           slot <- (if full oldkey newkey
-                                    then getSlt slots newkey (collision idx mask) mask
-                                    else return slot) :: IO (Slot key value)
-                           return slot -- TODO count reprobes 
+                           (slot,_) <- (if full oldkey newkey -- TODO take the  returnvalue and the counter and pass it back
+                                       then getSlt slots rpcntr newkey (collision idx mask) mask -- TODO somewhere here  incremntedb counter
+                                       else return (slot,rpcntr)) :: IO (Slot key value, ReprobeCounter)
+                           return (slot, rpcntr) -- TODO count reprobes 
 
 collision :: SlotsIndex -> Mask -> SlotsIndex
 collision idx mask = (idx +1) .&. mask
@@ -311,7 +311,7 @@ get_impl :: (Eq key, Hashable key) =>
             ConcurrentHashTable key val -> Kvs key val -> Key key  -> IO(Value val)
 get_impl table kvs key          = do let msk = mask kvs
                                          slts = slots kvs
-				     slt <- getSlot  slts msk key
+				     (slt,_) <- getSlot  slts msk key
 				     k <- readKeySlot slt
 				     v <- readValueSlot slt
 				     if keyComp k key
@@ -498,7 +498,7 @@ tableFull recounter len sltcounter = do sltcn <- readCounter sltcounter
 					return $ recounter >= _reprobe_limit && --always allow a few reprobes
 				                 sltcn >= (reprobe_limit len)   -- kvs is quarter full
 
-
+-- TODO add _copyIdx and _copyDoe to kvs, and write kvs for them
 -------------------------------------------------------------------------------------------------------------------------
 
 putIfMatch_T ::(Hashable key, Eq key, Eq value) =>
@@ -526,7 +526,7 @@ putIfMatch kvs key putVal expVal = do
   return $ assert $ not $ isKEmpty key -- TODO use eq TODO this is not in the original
   return $ assert $ not $ isPrimedValue putVal
   return $ assert $ not $ isPrimedValComp expVal
-  slot  <- (getSlot slts msk key) ::IO(Slot key val)
+  (slot, _)  <- (getSlot slts msk key) ::IO(Slot key val, ReprobeCounter) --TODO, either remove this or have it give back a reprobe counter
   
   oldKey <-  readKeySlot slot
   if isKEmpty oldKey --if putvall TMBSTONE and oldkey == empty do nothing -- TODO put this lines into an subfunction

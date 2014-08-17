@@ -518,6 +518,19 @@ very easy to understand, as long as you ignore the informal descriptions
  - https://hackage.haskell.org/package/base-4.6.0.1/docs/System-IO.html
  - https://hackage.haskell.org/package/base-4.6.0.1/docs/System-IO.html
  - https://hackage.haskell.org/package/time-1.4.0.1/docs/Data-Time-Clock-POSIX.html
+
+# 16.08.2014
+
+ - http://hackage.haskell.org/upload
+ - http://www.haskell.org/mailman/listinfo/libraries
+   subscribed
+ - https://github.com/haskell/hackage-server/issues/41#issuecomment-25005344
+ - https://github.com/hvr/multi-ghc-travis
+  why does travis fail, and whats the meaning of GHCVER=head
+ - http://community.haskell.org/~ndm/hlint/
+ - https://github.com/ndmitchell/hlint#readme
+ - http://docs.travis-ci.com/user/getting-started/
+ - http://www.google-melange.com/gsoc/document/show/gsoc_program/google/gsoc2014/codeguidelines
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
@@ -547,3 +560,5 @@ https://hackage.haskell.org/package/base-4.7.0.0/docs/Control-Exception-Base.htm
 https://hackage.haskell.org/package/base-4.7.0.0/docs/System-Mem-Weak.html#t:Weak
 http://wiki.octave.org/Summer_of_Code_Project_Ideas
 http://en.wikipedia.org/wiki/Behavior-driven_development
+http://www.google-melange.com/gsoc/document/show/gsoc_program/google/gsoc2014/codeguidelines
+
