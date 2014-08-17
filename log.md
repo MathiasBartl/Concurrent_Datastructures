@@ -537,6 +537,11 @@ very easy to understand, as long as you ignore the informal descriptions
  - https://code.google.com/p/ndmitchell/issues/detail?id=637
  - http://community.haskell.org/~ndm/darcs/hlint/hlint.htm
  - https://hackage.haskell.org/package/base-4.2.0.0/docs/System-IO-Error.html
+ - http://hackage.haskell.org/package/QuickCheck-2.1.0.2/docs/Test-QuickCheck-Monadic.html
+ - http://www.haskell.org/pipermail/beginners/2011-August/008320.html
+   example ofr
+ - https://ghc.haskell.org/trac/ghc/ticket/9429
+ - https://github.com/haskell-distributed/rank1dynamic/pull/6
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
@@ -568,3 +573,4 @@ http://wiki.octave.org/Summer_of_Code_Project_Ideas
 http://en.wikipedia.org/wiki/Behavior-driven_development
 http://www.google-melange.com/gsoc/document/show/gsoc_program/google/gsoc2014/codeguidelines
 http://www.imore.com/debug-31-miguel-de-icaza-mono
+https://hackage.haskell.org/package/rank1dynamic

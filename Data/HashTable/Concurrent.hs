@@ -44,7 +44,7 @@ module Data.HashTable.Concurrent
         , removeKey, remove, replace, replaceTest, clear
 
 	  -- * Debuging
-	, debugShow, getNumberOfOngoingResizes, getLengthsOfVectors, getSlotsCounters, countUsedSlots
+	, debugShow, getNumberOfOngoingResizes, getLengthsOfVectors, getSlotsCounters, countUsedSlots, getReprobeCount
         )
 	where
 
@@ -556,7 +556,7 @@ putIfMatch kvs key putVal expVal = do
 				                                     keyfits <- helper2 slt
 				                                     if keyfits 
 					                                  then
-					                                    do (success,ret) <- setval slt newval compval
+					                                    do (success,ret) <- casValueSlot slt compval newval
 									       if success then --was there an change made 
 										  opSizeCntr ret newval else return ()--updating the sizecounter
 									       return ret
@@ -569,9 +569,6 @@ putIfMatch kvs key putVal expVal = do
 						       if cased then incSlotsCntr else return () 
 -- TODO doing a simple check before the expensive cas should not be harmfull, because of the monotonic nature of keys
 						       return success 		 
-					--set the value, return old value
-				      setval :: Slot key val -> Value val -> ValComp val -> IO((Bool,Value val))
-		       		      setval slt newval oldvalcmp = casValueSlot slt oldvalcmp newval -- TODO remove indirction
 				      -- TODO if T to Value inc size counter, if V to T or S dec size counter
 				      opSizeCntr :: Value val -> Value val -> IO()
 				      opSizeCntr T (V _)      = incSizeCounter kvs
@@ -780,6 +777,7 @@ clearHint table hint = do let size = normSize hint
 -- TODO rewrite in case type of ConcurrentHashTable changes
 -- TODO the java version uses a kvsCAS here
 -- TODO write an concurrent testcase for this
+-- TODO without cas a store load barrier might be in order, see discussion with ryan
 
 -- | Returns the value to which the specified key is mapped.
 get :: (Eq key, Hashable key) => 
@@ -957,6 +955,19 @@ mapOnKvs ht fun = do kvs <- getHeadKvs ht
 			     return $ a:lst
 
 
+-- | Countes the number of Reprobes for a given key
+-- does not change ht
+getReprobeCount :: forall k v . (Hashable k, Eq k) =>  ConcurrentHashTable k v -> k -> IO Int
+getReprobeCount ht key = do headkvs <- getHeadKvs ht
+			    rpCount headkvs (newKey key)
+	where rpCount :: Kvs k v -> Key k -> IO Int
+	      rpCount kv key = do let msk = mask kv
+                                      slts = slots kv
+				  (_, rpcnt) <- getSlot  slts msk key
+				  return rpcnt
+-- TODO use this in an resize related unit test
+-- work only on the headKvs
+
 -- TODO write a debug function telling the ht to arbitaritly resize
 
 --todo generate arbitrary hashtables
@@ -965,6 +976,8 @@ mapOnKvs ht fun = do kvs <- getHeadKvs ht
 
 -- TODO Assert each kvs does not contain the same key twice
 
+
+-- TODO ticket api : key containing a fullhash, allows the user to cache hashes
 
 
 -- TODO write comments on the interface

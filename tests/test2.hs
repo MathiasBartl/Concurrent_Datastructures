@@ -50,7 +50,8 @@ tests = TestList [ TestLabel "test1" test1,
 
 tests_debugcode = TestList [ TestLabel "getNumberOfOngoingResizes" test_debugcode_getNumberOfOngoingResizes
 			   , TestLabel "getLengthsOfVectors" test_debugcode_getLengthsOfVectors
-			   , TestLabel "getSlotsCounters"  test_debugcode_getSlotsCounters]
+			   , TestLabel "getSlotsCounters"  test_debugcode_getSlotsCounters
+			   , TestLabel  "getReprobeCount" test_debugcode_getReprobeCount]
 
 {-tests_with_resize = TestList [ TestLabel "resize" test_resize
 			     , TestLabel "multiple_resize" test_multiple_resize
@@ -318,6 +319,14 @@ test_debugcode_getSlotsCounters = TestCase (do ht <- setup
 
 					       --TODO compare slotscouter to actuall numberof used slots, possibly by writing an assertion into putIfMatch under the condition that all access is sequential
 					       )
+
+test_debugcode_getReprobeCount = TestCase (do ht <- emptySetup
+					      ret <- HT.getReprobeCount ht 55985335686
+					      assertEqual "No reprobes on an empty table." 0 ret
+					      )
+--todo test a case where there has to be a case of reprobes, possibly export the fullhash vlues fo this purpose, --this is not that urgent
+--this actually is a testcse for reprobecounter likewise
+
 
 test_resize = TestCase (do ht <- emptySetup
 			   forM_ [0..11] (\i -> HT.put ht i i)
