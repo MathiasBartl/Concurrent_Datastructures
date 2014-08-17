@@ -62,6 +62,8 @@ import Control.Monad.ST (runST)
 import Data.Word (Word) 
 import Data.Int (Int64)
 
+import Control.Exception.Base (ioError) -- TODO remove once resizing works
+import System.IO.Error (userError)      -- TODO ditto
 
 import Numeric (showIntAtBase) -- FIXME for debug only
 import Data.Char (intToDigit)       --dito
@@ -269,7 +271,7 @@ getSlot slots mask key =  do let fllhash = fullHash key
 -- FIXME REMOVE
 			   sz <- return $ V.length slots
 			   if rpcntr > sz  -- every slot has already been probed
-				then return $ error "Table is full and resizing does not work." else return ()
+				then ioError $ userError "Table is full and resizing does not work." else return ()
 -- FIXME REMOVE
                            if full oldkey newkey 
                                        then getSlt slots (incReprobeCounter rpcntr) newkey (collision idx mask) mask -- Reprobe

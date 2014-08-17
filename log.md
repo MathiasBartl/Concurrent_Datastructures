@@ -536,6 +536,7 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://neilmitchell.blogspot.de/2009/09/how-i-use-hlint.html
  - https://code.google.com/p/ndmitchell/issues/detail?id=637
  - http://community.haskell.org/~ndm/darcs/hlint/hlint.htm
+ - https://hackage.haskell.org/package/base-4.2.0.0/docs/System-IO-Error.html
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
