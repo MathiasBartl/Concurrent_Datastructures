@@ -248,25 +248,25 @@ isValue _ = False
 --------------------------------------------------------------------------------------------------------------------------------------------
 
 -- does not terminate if array is full, and key is not in it
--- TODO, use fitting hash function and pass Key key
+-- TODO possibly return whether the slot has a key or the key is empty
+-- TODO testcases for reprobe
+-- | Reprobes until it find an Slot with a fitting or empty key
 getSlot :: forall key value . (Eq key) =>  
            Slots key value -> Mask -> Key key -> IO(Slot key value, ReprobeCounter)
 getSlot slots mask key =  do	let fllhash = fullHash key
 				    idx = maskHash mask fllhash  
-				(slot, rpcntr) <- getSlt slots newReprobeCounter key idx mask
---collision treatment has to be done again on a write should the key cas fail
-				return (slot, rpcntr) -- TODO remove this return
+				getSlt slots newReprobeCounter key idx mask
 		where full :: Key key -> Key key -> Bool
 		      full  Kempty _ = False
-		      full  k1 k2 = not (keyComp k1 k2)
+		      full  k1 k2 = not (keyComp k1 k2) --Collison threatmet is done again whe CASing key
 		      getSlt:: Slots key value -> ReprobeCounter -> Key key -> SlotsIndex -> Mask -> IO(Slot key value, ReprobeCounter)
 		      getSlt slots rpcntr newkey idx mask =
                         do let slot = (slots V.! idx) :: (Slot key value)
                            oldkey <- (readKeySlot slot)::IO(Key key)
-                           (slot,_) <- (if full oldkey newkey -- TODO take the  returnvalue and the counter and pass it back
-                                       then getSlt slots rpcntr newkey (collision idx mask) mask -- TODO somewhere here  incremntedb counter
-                                       else return (slot,rpcntr)) :: IO (Slot key value, ReprobeCounter)
-                           return (slot, rpcntr) -- TODO count reprobes 
+                           if full oldkey newkey 
+                                       then getSlt slots (incReprobeCounter rpcntr) newkey (collision idx mask) mask -- Reprobe
+                                       else return (slot,rpcntr) -- Found a Slot that has eiter an fitting or an empty key
+                           
 
 collision :: SlotsIndex -> Mask -> SlotsIndex
 collision idx mask = (idx +1) .&. mask
@@ -609,6 +609,11 @@ readSizeCounter kvs = do let counter = sizeCounter kvs
 
 newSizeCounter :: IO(SizeCounter) 
 newSizeCounter = newCounter 0
+
+
+incReprobeCounter :: ReprobeCounter -> ReprobeCounter
+incReprobeCounter cnt = cnt + 1
+
 -- TODO possibly parameter table
 --Exported functions
 
