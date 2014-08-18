@@ -33,6 +33,20 @@
 -- TODO make list of all Hashtable libraries in haskell and compare
 module Data.HashTable.Concurrent 
 	( 
+	  -- * Alpha version limitations
+	  -- | Table resize is not working, use 'newConcurrentHashTableHint' and 'clearHint' with appropirate /hint/ for the number of slots!
+	  -- For technical reasons once a slot has been used for a given key-value  it can not be reused with a different key even after
+	  -- the original mapping has been removed.
+	  --
+	  -- Be /n/ the maximum number of mappings stored in the hashtable at any time, and /k/ the size of the set of all keys entered over the 
+          -- entire lifespan of the hashtable. It is not only required that /hint > n/ but also /hint > k/.
+          -- 
+          -- In order to reduce the number of reprobes we recommend that at last /hint > 8k/.
+          --
+          -- * Maximum number of slots
+          --
+          -- A Hashtable can hold between __2^3__ and __2^31__ slots. 
+
           -- * Creating hash tables
           ConcurrentHashTable
 	, newConcurrentHashTableHint, newConcurrentHashTable
@@ -41,7 +55,7 @@ module Data.HashTable.Concurrent
           -- * Basic reading and writing 
         , put, putIfAbsent, get 
           -- * Removing or replacing 
-        , removeKey, remove, replace, replaceTest, clear
+        , removeKey, remove, replace, replaceTest, clear, clearHint -- TODO should clearHint really be exported
 
 	  -- * Debuging
 	, debugShow, getNumberOfOngoingResizes, getLengthsOfVectors, getSlotsCounters, countUsedSlots, getReprobeCount
@@ -71,7 +85,8 @@ import Data.Char (intToDigit)       --dito
 -- TODO look for 32/64 bit issues, Magic Numbers
 
 min_size_log = 3
-min_size = 2 ^ min_size_log --must be power of 2, compiler should turn this into a constant
+min_size = 2 ^ min_size_log --must be power of 2, compiler should turn this into a constant --TODO have this as a perprocessor constant, so it 
+--can be included in haddock
 
 max_size_log = 31
 max_size = 2 ^ max_size_log
@@ -762,12 +777,16 @@ replaceTest :: (Eq val, Eq key, Hashable key) =>
 	       -> IO(Bool) -- ^ True if replaced
 replaceTest table key newval oldval= do old <- putIfMatch_T table key (V newval) (Left (V oldval))
                                         return $  (unwrapValue old) == Just oldval 
-
--- | Removes all of the mappings from this map, number of slots to min_size
+-- TODO Haddock comment gives actuall min_size
+-- | Removes all of the mappings from this map, number of slots to min_size=2^3
+--
+-- may have concurrency bug
 clear :: ConcurrentHashTable key val -> IO()
 clear table = clearHint table min_size 
 
 -- | Removes all of the mappings from this map, number of slots to next largest power of 2. See: 'newConcurrentHashTableHint'.
+--
+-- may have concurrency bug
 clearHint :: ConcurrentHashTable key val -> Size -> IO()
 clearHint table hint = do let size = normSize hint
                               kvsref = kvs table

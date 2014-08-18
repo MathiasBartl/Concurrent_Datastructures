@@ -17,7 +17,11 @@ Synopsis: A lockfree, waitfree concurrent hashtable.
 Description:
 
   A lockfree, waitfree concurrent hashtable.
-  Based on: 
+  .
+  Based on:
+  . 
+  "http://www.stanford.edu/class/ee380/Abstracts/070221_LockFreeHash.pdf"
+  .
   "https://github.com/boundary/high-scale-lib/blob/master/src/main/java/org/cliffc/high_scale_lib/NonBlockingHashtable.java"
 --TODO further description  
   .
