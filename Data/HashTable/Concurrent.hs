@@ -486,9 +486,23 @@ removeOldestKvs ht = do let htKvsRef = kvs ht
 			writeIORef htKvsRef secondOldestKvs
 			--oldestKvs will be GCted, one could explicitly destroy oldestKvs here
 
+copySlotAndCheck :: ConcurrentHashTable key value -> Kvs key value -> SlotsIndex -> Bool -> IO (Kvs key value) -- TODO make type signature
 copySlotAndCheck = undefined -- TODO
 
-copyCheckAndPromote = undefined -- TODO
+copyCheckAndPromote :: ConcurrentHashTable key value -> Kvs key value -> SlotsIndex -> IO ()
+copyCheckAndPromote ht oldkvs workdone  = undefined -- TODO
+-- TODO write a casRoutine for copydone
+
+-- TODO only use in copyCheckAndPromote
+casCopyDone :: Kvs key value -> SlotsIndex -> IO ()
+casCopyDone kv workdone = do copydoneref <- (undefined)::(IO(IORef SlotsIndex)) -- TODO get copydone object
+		 	     copydoneticket <- readForCAS copydoneref
+			     casCD copydoneref copydoneticket workdone
+ 	where casCD cdref ticket workdone = do let newval = (peekTicket ticket) + workdone
+					       (success, retticket) <- casIORef cdref ticket newval
+					       if success then return () else casCD cdref retticket workdone
+-- TODO assert copydone + workdone <= oldlen, workdone > 0
+
 
 resize :: ConcurrentHashTable key value -> Kvs key value -> IO (Kvs key value)
 resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs

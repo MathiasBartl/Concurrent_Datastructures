@@ -545,6 +545,10 @@ very easy to understand, as long as you ignore the informal descriptions
  - https://ghc.haskell.org/trac/ghc/ticket/9429
  - http://hackage.haskell.org/package/base-4.7.0.1/docs/Data-Typeable.html
  - http://hackage.haskell.org/package/base-4.7.0.1/docs/Data-Dynamic.html
+
+# 18.08.2014
+
+ - http://michael.orlitzky.com/articles/using_haddock_markup_in_a_cabal_file.php
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
