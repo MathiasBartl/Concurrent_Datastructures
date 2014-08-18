@@ -968,6 +968,17 @@ getReprobeCount ht key = do headkvs <- getHeadKvs ht
 -- TODO use this in an resize related unit test
 -- work only on the headKvs
 
+keyFullHashEqual :: (Hashable key) => key -> key -> Bool
+keyFullHashEqual a b = (spreadHash $ hash a) == (spreadHash $ hash b)
+
+keyIdxCollision :: forall key . (Hashable key) => Size -> key -> key -> Bool
+keyIdxCollision sze a b = (getIdx a) == (getIdx b)
+	where getFullHash :: key -> FullHash
+	      getFullHash a = spreadHash $ hash a
+	      getIdx a = maskHash (getMask sze) (getFullHash a)
+
+
+
 -- TODO write a debug function telling the ht to arbitaritly resize
 
 --todo generate arbitrary hashtables

@@ -542,6 +542,9 @@ very easy to understand, as long as you ignore the informal descriptions
    example ofr
  - https://ghc.haskell.org/trac/ghc/ticket/9429
  - https://github.com/haskell-distributed/rank1dynamic/pull/6
+ - https://ghc.haskell.org/trac/ghc/ticket/9429
+ - http://hackage.haskell.org/package/base-4.7.0.1/docs/Data-Typeable.html
+ - http://hackage.haskell.org/package/base-4.7.0.1/docs/Data-Dynamic.html
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
