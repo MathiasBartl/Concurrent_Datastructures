@@ -144,7 +144,8 @@ data Kvs k v =   Kvs {
 	,slots :: Slots k v 
 	, mask :: Mask
 	, slotsCounter :: SlotsCounter
-	, sizeCounter :: SizeCounter 
+	, sizeCounter :: SizeCounter
+	, _copyDone :: IORef CopyDone 
 }
 
 
@@ -177,6 +178,7 @@ type Slots key val = V.Vector (Slot key val)
 
 data ConcurrentHashTable key val = ConcurrentHashTable {	
 		  kvs :: IORef(Kvs key val)
+		  , timeOfLastResize :: IORef Time
 }
 
 -- functions for keys
@@ -486,7 +488,7 @@ copyOnePair slt newkvs = do undefined -- TODO read Slot
 -- | removes the oldest kvs from the ht
 --throws error, if there is no resize in progress and thus only one kvs
 --some other routine has to determine that the oldest kvs is completly copied, and that the routine is not called multiple times for the same kvs
--- maybe there has to be an cas used 
+-- maybe there has to be an cas used -- TODO probably better us CAS with 'casHeadKvs'
 removeOldestKvs :: ConcurrentHashTable key val -> IO ()
 removeOldestKvs ht = do let htKvsRef = kvs ht
 			oldestKvs <- getHeadKvs ht
@@ -495,11 +497,16 @@ removeOldestKvs ht = do let htKvsRef = kvs ht
 			--oldestKvs will be GCted, one could explicitly destroy oldestKvs here
 
 copySlotAndCheck :: ConcurrentHashTable key value -> Kvs key value -> SlotsIndex -> Bool -> IO (Kvs key value) -- TODO make type signature
-copySlotAndCheck = undefined -- TODO
+copySlotAndCheck  ht oldkvs idx shouldHelp = do newkvs <- getNextKvs oldkvs -- TODO originally theres a volatile read
+						success <- undefined -- TODO Copy Slot
+						if success then copyCheckAndPromote ht oldkvs 1 else return ()
+						undefined -- TODO conditionally call helpCopy
 
+
+-- | Increases the copy done counter for oldkvs by workdone, and removes oldkvs if it is the oldest kvs and has been fully copied
 copyCheckAndPromote :: ConcurrentHashTable key value -> Kvs key value -> SlotsIndex -> IO ()
-copyCheckAndPromote ht oldkvs workdone  = do copydone <- if workdone > 0 then casCopyDone oldkvs workdone else getCopyDone oldkvs
-					     oldlen <- undefined
+copyCheckAndPromote ht oldkvs workdone  = do let oldlen = getLength oldkvs 
+					     copydone <- if workdone > 0 then casCopyDone oldkvs workdone else getCopyDone oldkvs
 					     isheadkvs  <- isHeadKvs ht oldkvs-- TODO
 					     if copydone < oldlen then return () else if not $ isheadkvs  then return () else
 						do newkvs <- getNextKvs oldkvs -- Assert hasNextKvs
@@ -527,10 +534,11 @@ casCopyDone kv workdone = do copydoneref <- (return $ getCopyDoneRef kv)::(IO(IO
 -- TODO assert copydone + workdone <= oldlen, workdone > 0
 
 getCopyDone :: Kvs key value -> IO CopyDone
-getCopyDone = undefined
+getCopyDone kvs = do let ref = _copyDone kvs
+		     readIORef ref 
 
 getCopyDoneRef :: Kvs key value -> IORef CopyDone
-getCopyDoneRef = undefined
+getCopyDoneRef = _copyDone
 
 resize :: ConcurrentHashTable key value -> Kvs key value -> IO (Kvs key value)
 resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
@@ -691,8 +699,8 @@ getHeadKvs table = do let kvsref= kvs table
 
 
 isHeadKvs :: ConcurrentHashTable key val -> Kvs key val -> IO Bool
-isHeadKvs table kvs = undefined
-
+isHeadKvs ht kv = do let headref = kvs ht  -- TODO Does this have to be in IO, ok
+ 		     return undefined -- TODO ok, I wanted to make an pointer coparision, this would if it was a good idea require me to pass an IOref as parameter, witch would screw up the interface
 --gets then new resizedtable, throws error if does not exist
 getNextKvs :: Kvs key val -> IO(Kvs key val)
 getNextKvs kv = do let kvsref =  newkvs kv  --throws error
@@ -724,7 +732,8 @@ casNextKvs kvs nwkvs = do let kvsref = newkvs kvs
 casHeadKvs :: ConcurrentHashTable key val -> Kvs key val -> Kvs key val -> IO ()
 casHeadKvs = undefined 
 
-
+getLength :: Kvs key value -> Int
+getLength = V.length . slots
 -------------------------------------------------------------------------------------------------------------
 
 -- | Returns the number of key-value mappings in this map
@@ -874,8 +883,10 @@ newConcurrentHashTableHint hint = do let size = normSize hint
                                      szcntr <- newSizeCounter
 				     kvs <- newKvs size szcntr
 				     kvsref <- newIORef kvs
-
-				     return $ ConcurrentHashTable kvsref                                    
+				     timer <- newTimer
+				     return $ ConcurrentHashTable kvsref timer
+	where newTimer :: IO (IORef Time)
+	      newTimer = newIORef 0 -- TODO set actuall time                                    
 -- TODO throw error if size <0
 
 -- | Returns the next larger potency of 2
@@ -892,7 +903,8 @@ newKvs size  counter = do let msk = getMask size
 		          slts <- newSlots size
 	                  sltcntr <- newSlotsCounter
 			  kvsref <- noKvs
-	                  return $ Kvs kvsref slts msk sltcntr counter
+			  copyDone <- newIORef 0
+	                  return $ Kvs kvsref slts msk sltcntr counter copyDone
 	where
 		newSlots :: Size -> IO( Slots key val)
 		newSlots size = V.replicateM size newSlot -- TODO
