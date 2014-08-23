@@ -549,6 +549,18 @@ very easy to understand, as long as you ignore the informal descriptions
 # 18.08.2014
 
  - http://michael.orlitzky.com/articles/using_haddock_markup_in_a_cabal_file.php
+ - http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/atomic/AtomicLongFieldUpdater.html
+ - http://stackoverflow.com/questions/17239568/real-life-use-and-explanation-of-the-atomiclongfieldupdate-class
+ - http://javamex.com/tutorials/synchronization_concurrency_7_atomic_updaters.shtml
+
+# 23.08.2014
+
+ - http://stackoverflow.com/questions/578063/what-is-haskells-stream-fusion
+ - https://ghc.haskell.org/trac/ghc/ticket/915
+ - http://metagraph.org/papers/stream_fusion.pdf
+ - http://en.wikipedia.org/wiki/Deforestation_%28computer_science%29
+ - http://hackage.haskell.org/package/Stream-0.4.1/docs/Data-Stream.html
+ - http://metagraph.org/papers/stream_fusion.pdf
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
@@ -581,3 +593,7 @@ http://en.wikipedia.org/wiki/Behavior-driven_development
 http://www.google-melange.com/gsoc/document/show/gsoc_program/google/gsoc2014/codeguidelines
 http://www.imore.com/debug-31-miguel-de-icaza-mono
 https://hackage.haskell.org/package/rank1dynamic
+http://javamex.com/tutorials/synchronization_concurrency_7_atomic_updaters.shtml
+http://folk.uio.no/carljsv/computergames/computergames.pdf
+http://metagraph.org/papers/stream_fusion.pdf
+ i'll have to go into the detials

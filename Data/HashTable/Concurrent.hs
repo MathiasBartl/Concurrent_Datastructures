@@ -84,6 +84,13 @@ import Data.Char (intToDigit)       --dito
 
 -- TODO look for 32/64 bit issues, Magic Numbers
 
+
+
+setLastResizeTime :: ConcurrentHashTable key value -> IO ()
+setLastResizeTime = undefined
+
+
+
 min_size_log = 3
 min_size = 2 ^ min_size_log --must be power of 2, compiler should turn this into a constant --TODO have this as a perprocessor constant, so it 
 --can be included in haddock
@@ -145,6 +152,7 @@ type SlotsCounter = AtomicCounter
 type SizeCounter  = AtomicCounter
 
 type FullHash = SlotsIndex
+type CopyDone = SlotsIndex -- originaly an atomic-long-field updater
 type FullHashUnsigned = Word
 type SlotsIndex = Int
 type Mask = SlotsIndex
@@ -490,19 +498,39 @@ copySlotAndCheck :: ConcurrentHashTable key value -> Kvs key value -> SlotsIndex
 copySlotAndCheck = undefined -- TODO
 
 copyCheckAndPromote :: ConcurrentHashTable key value -> Kvs key value -> SlotsIndex -> IO ()
-copyCheckAndPromote ht oldkvs workdone  = undefined -- TODO
+copyCheckAndPromote ht oldkvs workdone  = do copydone <- if workdone > 0 then casCopyDone oldkvs workdone else getCopyDone oldkvs
+					     oldlen <- undefined
+					     isheadkvs  <- isHeadKvs ht oldkvs-- TODO
+					     if copydone < oldlen then return () else if not $ isheadkvs  then return () else
+						do newkvs <- getNextKvs oldkvs -- Assert hasNextKvs
+						   casHeadKvs ht oldkvs newkvs
+						   setLastResizeTime ht
+-- TODO assert workdone is posetive
+-- TODO 1. if workdone > 0 casCopyDone.
+--      2. test if new value of copyDon == oldlen
+--      3. if table has been fully copyied
+--          if oldkvs == topKvs then casKVS with newKvs
+              --set last resize milli
+-- TODO, how to determine if kvs is topkvs 
+
 -- TODO write a casRoutine for copydone
 
 -- TODO only use in copyCheckAndPromote
-casCopyDone :: Kvs key value -> SlotsIndex -> IO ()
-casCopyDone kv workdone = do copydoneref <- (undefined)::(IO(IORef SlotsIndex)) -- TODO get copydone object
+casCopyDone :: Kvs key value -> SlotsIndex -> IO SlotsIndex
+casCopyDone kv workdone = do copydoneref <- (return $ getCopyDoneRef kv)::(IO(IORef CopyDone)) -- TODO get copydone object  -- Note copy done is originaly an
+--atomicLongFieldUpdater -- TODO have copydone its own type
 		 	     copydoneticket <- readForCAS copydoneref
 			     casCD copydoneref copydoneticket workdone
  	where casCD cdref ticket workdone = do let newval = (peekTicket ticket) + workdone
 					       (success, retticket) <- casIORef cdref ticket newval
-					       if success then return () else casCD cdref retticket workdone
+					       if success then return newval else casCD cdref retticket workdone
 -- TODO assert copydone + workdone <= oldlen, workdone > 0
 
+getCopyDone :: Kvs key value -> IO CopyDone
+getCopyDone = undefined
+
+getCopyDoneRef :: Kvs key value -> IORef CopyDone
+getCopyDoneRef = undefined
 
 resize :: ConcurrentHashTable key value -> Kvs key value -> IO (Kvs key value)
 resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
@@ -661,6 +689,10 @@ getHeadKvs :: ConcurrentHashTable key val -> IO(Kvs key val)
 getHeadKvs table = do let kvsref= kvs table
 		      readIORef kvsref
 
+
+isHeadKvs :: ConcurrentHashTable key val -> Kvs key val -> IO Bool
+isHeadKvs table kvs = undefined
+
 --gets then new resizedtable, throws error if does not exist
 getNextKvs :: Kvs key val -> IO(Kvs key val)
 getNextKvs kv = do let kvsref =  newkvs kv  --throws error
@@ -686,6 +718,13 @@ casNextKvs kvs nwkvs = do let kvsref = newkvs kvs
 			   						             return $ success
  -- TODO rewrite the other cas stuff accordigly
 -- TODO (Just IORef a) is a stupid construction because seting the IORef from Nothing to Just changes an immutable datastructure also you cant do an cas on the Maybe type, todo have some value of IORef that says nothing
+-- TODO is this correctly
+
+-- TODO use tickets correctly here
+casHeadKvs :: ConcurrentHashTable key val -> Kvs key val -> Kvs key val -> IO ()
+casHeadKvs = undefined 
+
+
 -------------------------------------------------------------------------------------------------------------
 
 -- | Returns the number of key-value mappings in this map
@@ -1026,3 +1065,5 @@ keyIdxCollision sze a b = (getIdx a) == (getIdx b)
 
 -- TODO write comments on the interface
 
+-- TODO how about an instance of arbitrary
+-- |Set of Keys| = size , |List of Values| = size all genratet with size parameter, zip and put, actually not that compilcated
