@@ -1085,6 +1085,10 @@ htGen = undefined
 --htGen htsize keysize (Left valuesize) = QCGU.promote $ do lst <- newConcurrentHashTable -- TODO In order to have this need a fúnction that takes an ht and returns IO Gen HT 
 		--			   	          ht
 htgen htsize keysize (Right valuegen) = undefined  
+	where h1 :: QCG.Gen (IO (ConcurrentHashTable key value)) -> key -> value -> QCG.Gen (IO (ConcurrentHashTable key value))
+	      h1 gen key val = fmap (\ioht -> ioht) gen -- TODO question is there
+-- we have a generator of Gen IO Concurrent hashtable and we fmap an put on it, probably requires some other monadic operation 
+-- or what 
 -- use of promote is correct but
 -- First generator of a key-valuetor list 
 -- IO of generator of an ht
