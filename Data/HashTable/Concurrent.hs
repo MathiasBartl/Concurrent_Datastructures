@@ -1084,9 +1084,18 @@ htGen :: forall key value .(Eq value,Eq key, Hashable key) =>
 	Int -> Int -> Either Int (key -> Gen value) -> QCG.Gen (IO (ConcurrentHashTable key value))
 htGen htsize keysize (Left valuesize) = undefined
 --htGen htsize keysize (Left valuesize) = QCGU.promote $ do lst <- newConcurrentHashTable -- TODO In order to have this need a fúnction that takes an ht and returns IO Gen HT 	--			   	          ht
-htGen htsize keysize (Right valuegen) = undefined  
-	where h1 :: QCG.Gen (IO (ConcurrentHashTable key value)) -> key -> value -> QCG.Gen (IO (ConcurrentHashTable key value))
+htGen htsize keysize (Right valuegen) = do gen <- h2
+					   return gen -- TODO get h2 and add htsize times h3  
+	where h1 :: QCG.Gen (IO (ConcurrentHashTable key value)) -> key -> value -> QCG.Gen (IO (ConcurrentHashTable key value)) 
 	      h1 gen key val = fmap (\ioht -> ioht >>= (\ht -> (put ht key val) >> (return ht))) gen -- TODO question is there
+	      h2 :: QCG.Gen (IO (ConcurrentHashTable key value))
+	      h2 = return newConcurrentHashTable
+	      h3 :: QCG.Gen (IO (ConcurrentHashTable key value)) -> Gen key -> Gen value -> QCG.Gen (IO (ConcurrentHashTable key value))
+	      h3 gen genk genv = do k <- genk
+				    v <- genv
+				    h1 gen k v 
+-- TODO now use monadic programing to feed h1 with Gen key and Gen values
+
 -- we have a generator of Gen IO Concurrent hashtable and we fmap an put on it, probably requires some other monadic operation 
 -- or what 
 -- use of promote is correct but
