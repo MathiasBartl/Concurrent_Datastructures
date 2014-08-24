@@ -84,6 +84,7 @@ import Data.Char (intToDigit)       --dito
 
 import Test.QuickCheck.Arbitrary as QCA
 import Test.QuickCheck.Gen as QCG
+import Test.QuickCheck.Gen.Unsafe as QCGU
 
 -- TODO look for 32/64 bit issues, Magic Numbers
 
@@ -1074,14 +1075,21 @@ keyIdxCollision sze a b = (getIdx a) == (getIdx b)
 
 --- Quick Check generator
 ------------------------------------------------------------------------------------------------------------------
-instance (Eq val,Eq key, Hashable key) => QCA.Arbitrary (ConcurrentHashTable key val) where
+instance (Eq val,Eq key, Hashable key) => QCA.Arbitrary (IO (ConcurrentHashTable key val)) where
 	arbitrary = sized (\size -> htGen size size (Left size))
 	shrink = (\ht -> [])
 
 
-htGen :: Int -> Int -> Either Int (key -> Gen value) -> QCG.Gen (ConcurrentHashTable key value)
-htGen htsize keysize (Left valuesize) = undefined
-htgen htsize keysize (Right valuegen) = undefined 
+htGen :: Int -> Int -> Either Int (key -> Gen value) -> QCG.Gen (IO (ConcurrentHashTable key value))
+htGen = undefined
+--htGen htsize keysize (Left valuesize) = QCGU.promote $ do lst <- newConcurrentHashTable -- TODO In order to have this need a fúnction that takes an ht and returns IO Gen HT 
+		--			   	          ht
+htgen htsize keysize (Right valuegen) = undefined  
+-- use of promote is correct but
+-- First generator of a key-valuetor list 
+-- IO of generator of an ht
+-- then promote to generator of IO
+-- then QuickCheck monadic
 
 
 -- TODO parametrise this with custom keygen

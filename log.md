@@ -565,6 +565,7 @@ very easy to understand, as long as you ignore the informal descriptions
 # 24.08.2014
 
  - http://stackoverflow.com/questions/16968549/what-is-a-shrink-with-regard-to-haskells-quickcheck
+ - http://hackage.haskell.org/package/QuickCheck-2.7.6/docs/src/Test-QuickCheck-Gen.html#Gen
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf
