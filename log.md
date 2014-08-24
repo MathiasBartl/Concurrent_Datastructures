@@ -561,6 +561,10 @@ very easy to understand, as long as you ignore the informal descriptions
  - http://en.wikipedia.org/wiki/Deforestation_%28computer_science%29
  - http://hackage.haskell.org/package/Stream-0.4.1/docs/Data-Stream.html
  - http://metagraph.org/papers/stream_fusion.pdf
+
+# 24.08.2014
+
+ - http://stackoverflow.com/questions/16968549/what-is-a-shrink-with-regard-to-haskells-quickcheck
 # reading list:
 
 http://community.haskell.org/~simonmar/lab-exercises-cadarache.pdf

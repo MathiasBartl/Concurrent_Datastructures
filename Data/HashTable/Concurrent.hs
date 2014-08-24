@@ -82,6 +82,9 @@ import System.IO.Error (userError)      -- TODO ditto
 import Numeric (showIntAtBase) -- FIXME for debug only
 import Data.Char (intToDigit)       --dito
 
+import Test.QuickCheck.Arbitrary as QCA
+import Test.QuickCheck.Gen as QCG
+
 -- TODO look for 32/64 bit issues, Magic Numbers
 
 
@@ -145,7 +148,8 @@ data Kvs k v =   Kvs {
 	, mask :: Mask
 	, slotsCounter :: SlotsCounter
 	, sizeCounter :: SizeCounter
-	, _copyDone :: IORef CopyDone 
+	, _copyDone :: IORef CopyDone
+	, copyIndex :: IORef CopyIndex  
 }
 
 
@@ -154,6 +158,7 @@ type SizeCounter  = AtomicCounter
 
 type FullHash = SlotsIndex
 type CopyDone = SlotsIndex -- originaly an atomic-long-field updater
+type CopyIndex = SlotsIndex
 type FullHashUnsigned = Word
 type SlotsIndex = Int
 type Mask = SlotsIndex
@@ -496,16 +501,17 @@ removeOldestKvs ht = do let htKvsRef = kvs ht
 			writeIORef htKvsRef secondOldestKvs
 			--oldestKvs will be GCted, one could explicitly destroy oldestKvs here
 
-copySlotAndCheck :: ConcurrentHashTable key value -> Kvs key value -> SlotsIndex -> Bool -> IO (Kvs key value) -- TODO make type signature
+copySlotAndCheck :: ConcurrentHashTable key value -> Kvs key value -> SlotsIndex -> Bool -> IO () --(Kvs key value) -- TODO make type signature
 copySlotAndCheck  ht oldkvs idx shouldHelp = do newkvs <- getNextKvs oldkvs -- TODO originally theres a volatile read
 						success <- undefined -- TODO Copy Slot
 						if success then copyCheckAndPromote ht oldkvs 1 else return ()
-						undefined -- TODO conditionally call helpCopy
+						if not shouldHelp then return () else  -- TODO possible return newkvs here
+							helpCopy ht -- TODO does helpCopy need any further parameters
 
 
 -- | Increases the copy done counter for oldkvs by workdone, and removes oldkvs if it is the oldest kvs and has been fully copied
 copyCheckAndPromote :: ConcurrentHashTable key value -> Kvs key value -> SlotsIndex -> IO ()
-copyCheckAndPromote ht oldkvs workdone  = do let oldlen = getLength oldkvs 
+copyCheckAndPromote ht oldkvs workdone  = do let oldlen = getLength oldkvs   -- I do think I should get the ticket befor this function is called so we can check simply if the thing that we idetified as headkvs is still the headkvs, or something
 					     copydone <- if workdone > 0 then casCopyDone oldkvs workdone else getCopyDone oldkvs
 					     isheadkvs  <- isHeadKvs ht oldkvs-- TODO
 					     if copydone < oldlen then return () else if not $ isheadkvs  then return () else
@@ -730,7 +736,9 @@ casNextKvs kvs nwkvs = do let kvsref = newkvs kvs
 
 -- TODO use tickets correctly here
 casHeadKvs :: ConcurrentHashTable key val -> Kvs key val -> Kvs key val -> IO ()
-casHeadKvs = undefined 
+casHeadKvs ht oldheadkvs newkvs = do ticket <- readForCAS $  kvs ht
+				     undefined -- TODO See if its still the old kvs in place, or actually would the correct thing not be
+-- too get the ticket at the very beginning, tha is actually the only thing that makes sense
 
 getLength :: Kvs key value -> Int
 getLength = V.length . slots
@@ -904,7 +912,8 @@ newKvs size  counter = do let msk = getMask size
 	                  sltcntr <- newSlotsCounter
 			  kvsref <- noKvs
 			  copyDone <- newIORef 0
-	                  return $ Kvs kvsref slts msk sltcntr counter copyDone
+			  copyIndex <- newCopyIndex
+	                  return $ Kvs kvsref slts msk sltcntr counter copyDone copyIndex
 	where
 		newSlots :: Size -> IO( Slots key val)
 		newSlots size = V.replicateM size newSlot -- TODO
@@ -914,6 +923,7 @@ newKvs size  counter = do let msk = getMask size
 		newSlot = do keyref <- newIORef Kempty
 			     valref <- newIORef T     -- TODO optimize somewhere, somewhat 
 			     return $ Slot keyref valref 
+		newCopyIndex = newIORef 0
 		
 
 --Debug code -- TODO make inclusion conditional with preprocessor or something for DEBUG only
@@ -1062,6 +1072,19 @@ keyIdxCollision sze a b = (getIdx a) == (getIdx b)
 	      getIdx a = maskHash (getMask sze) (getFullHash a)
 
 
+--- Quick Check generator
+------------------------------------------------------------------------------------------------------------------
+instance (Eq val,Eq key, Hashable key) => QCA.Arbitrary (ConcurrentHashTable key val) where
+	arbitrary = sized (\size -> htGen size size (Left size))
+	shrink = (\ht -> [])
+
+
+htGen :: Int -> Int -> Either Int (key -> Gen value) -> QCG.Gen (ConcurrentHashTable key value)
+htGen htsize keysize (Left valuesize) = undefined
+htgen htsize keysize (Right valuegen) = undefined 
+
+
+-- TODO parametrise this with custom keygen
 
 -- TODO write a debug function telling the ht to arbitaritly resize
 
