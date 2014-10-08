@@ -128,7 +128,7 @@ data Key k = Kempty
 		 , keyE :: !k
 		 } 
 
--- T : empty, tombstone, Tp : tombstone primed, V : value, Vp : value primed -- TODO need tobstoes to be primed
+-- T : empty, tombstone, Tp : tombstone primed, V : value, Vp : value primed -- TODO need tombstoes to be primed
 data Value value =  T | Tp | V value | Vp value | S deriving (Eq) -- TODO what kind of comparision is used
 
 
@@ -458,11 +458,21 @@ casStripPrime slt@(Slot _ va) = do oldticket <- readForCAS va
 --
 helpCopy :: ConcurrentHashTable key value ->  IO ()
 helpCopy ht  = do topkvs <- getHeadKvs ht
-		  resizeinprogress <- hasNextKvs topkvs
+		  resizeinprogress <- hasNextKvs topkvs -- if a resize starts after this test its like the function was called before the start of the resize
 		  if not resizeinprogress then return () else helpCopyImpl ht topkvs False
 	where helpCopyImpl :: ConcurrentHashTable key value -> Kvs key value -> Bool -> IO ()
-	      helpCopyImpl ht oldkvs copyall = do newkvs <- getNextKvs oldkvs -- TODO assert hasNextKvs oldkvs == return True
-						  undefined			
+	      helpCopyImpl ht oldkvs copyall =  let minCopyWork = min 1024 $ getLength oldkvs 
+						    oldlen = getLength oldkvs
+						in
+						do newkvs <- getNextKvs oldkvs -- TODO assert hasNextKvs oldkvs == return True
+						   copyDone <- getCopyDone oldkvs
+						   helpCopyLoop oldkvs copyDone oldlen	-- TODO add aditional parameters
+						   copyCheckAndPromote ht oldkvs 0
+	      helpCopyLoop :: Kvs key value -> CopyDone -> Size -> IO ()
+	      helpCopyLoop oldkvs copydone oldlen = if copydone >= oldlen then return () else
+		do undefined	 
+		   copydone <- getCopyDone oldkvs
+		   helpCopyLoop oldkvs copydone oldlen
 	
 -- TODO enter calls of helpCopy in the marked functions
 
@@ -490,6 +500,12 @@ copyOnePair slt newkvs = do undefined -- TODO read Slot
 	      putAndReturnSlot :: Key key -> Value value -> Kvs key value -> IO (Bool, Slot key value)
 	      putAndReturnSlot key val kvs = undefined
     
+-- TODO is the same as copyOnePair? compare type signature
+copySlot :: ConcurrentHashTable key value -> SlotsIndex -> Kvs key value -> Kvs key value -> IO Bool
+copySlot ht idx oldkvs newkvs = undefined
+ 
+
+
 
 -- | removes the oldest kvs from the ht
 --throws error, if there is no resize in progress and thus only one kvs
