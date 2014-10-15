@@ -75,6 +75,7 @@ import Data.Either.Unwrap (fromLeft, isLeft, isRight, fromRight)
 import Control.Monad.ST (runST)
 import Data.Word (Word) 
 import Data.Int (Int64)
+import Control.Monad (forM)
 
 import Control.Exception.Base (ioError) -- TODO remove once resizing works
 import System.IO.Error (userError)      -- TODO ditto
@@ -466,13 +467,20 @@ helpCopy ht  = do topkvs <- getHeadKvs ht
 						in
 						do newkvs <- getNextKvs oldkvs -- TODO assert hasNextKvs oldkvs == return True
 						   copyDone <- getCopyDone oldkvs
-						   helpCopyLoop oldkvs copyDone oldlen	-- TODO add aditional parameters
+						   helpCopyLoop ht oldkvs newkvs copyDone oldlen copyall minCopyWork	-- TODO add aditional parameters
 						   copyCheckAndPromote ht oldkvs 0
-	      helpCopyLoop :: Kvs key value -> CopyDone -> Size -> IO ()
-	      helpCopyLoop oldkvs copydone oldlen = if copydone >= oldlen then return () else
-		do undefined	 
-		   copydone <- getCopyDone oldkvs
-		   helpCopyLoop oldkvs copydone oldlen
+	      helpCopyLoop :: ConcurrentHashTable key value -> Kvs key value -> Kvs key value -> CopyDone -> Size -> Bool-> Size -> IO ()
+	      helpCopyLoop ht oldkvs newkvs copydone oldlen copyall minCopyWork = if copydone >= oldlen then return () else
+		do undefined -- TODO set panic_start
+		   undefined 
+		   undefined
+		   lstwd <- forM [0..minCopyWork] (\x -> copySlot ht undefined oldkvs newkvs) -- TODO do the actual copy maybe map accuml -- TODO pass minCopyWork -- TODO index
+		   workdone <- return $ sum $ map fromEnum lstwd -- sum lstwd
+		   if workdone > 0 then copyCheckAndPromote ht oldkvs workdone else return () -- TODO if workdone > 0 copy check and promote
+		   if (not copyall) && undefined then return () else -- TODO check if panic
+		   	do undefined -- TODO do the other stuff and possibly return	 
+		   	   copydone <- getCopyDone oldkvs
+		   	   helpCopyLoop ht oldkvs newkvs copydone oldlen copyall minCopyWork
 	
 -- TODO enter calls of helpCopy in the marked functions
 
