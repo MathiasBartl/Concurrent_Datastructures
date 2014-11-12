@@ -466,21 +466,21 @@ helpCopy ht  = do topkvs <- getHeadKvs ht
 						    oldlen = getLength oldkvs
 						in
 						do newkvs <- getNextKvs oldkvs -- TODO assert hasNextKvs oldkvs == return True
-						   copyDone <- getCopyDone oldkvs
-						   helpCopyLoop ht oldkvs newkvs copyDone oldlen copyall minCopyWork	-- TODO add aditional parameters
+						   helpCopyLoop ht oldkvs newkvs  oldlen copyall minCopyWork (-9999) (-1)	-- TODO initial parameter for copy idx
 						   copyCheckAndPromote ht oldkvs 0
-	      helpCopyLoop :: ConcurrentHashTable key value -> Kvs key value -> Kvs key value -> CopyDone -> Size -> Bool-> Size -> IO ()
-	      helpCopyLoop ht oldkvs newkvs copydone oldlen copyall minCopyWork = if copydone >= oldlen then return () else
-		do undefined -- TODO set panic_start
+	      helpCopyLoop :: ConcurrentHashTable key value -> Kvs key value -> Kvs key value ->  Size -> Bool-> Size -> Size -> Size-> IO () --TODO chose fitting synonym for int 
+	      helpCopyLoop ht oldkvs newkvs  oldlen copyall minCopyWork copyidx panicStart =  
+	       do copydone <- getCopyDone oldkvs 
+		  if copydone >= oldlen then return () else do    
+		   undefined -- TODO set panic_start -- TODO add copyidx what about copydone it is shared
 		   undefined 
 		   undefined
-		   lstwd <- forM [0..minCopyWork] (\x -> copySlot ht undefined oldkvs newkvs) -- TODO do the actual copy maybe map accuml -- TODO pass minCopyWork -- TODO index
+		   lstwd <- forM [0..minCopyWork] (\x -> copySlot ht (maskHash (mask oldkvs) (copyidx+x) ) oldkvs newkvs) -- actual copying -- TODO index
 		   workdone <- return $ sum $ map fromEnum lstwd -- sum lstwd
 		   if workdone > 0 then copyCheckAndPromote ht oldkvs workdone else return () -- TODO if workdone > 0 copy check and promote
-		   if (not copyall) && undefined then return () else -- TODO check if panic
-		   	do undefined -- TODO do the other stuff and possibly return	 
-		   	   copydone <- getCopyDone oldkvs
-		   	   helpCopyLoop ht oldkvs newkvs copydone oldlen copyall minCopyWork
+		-- increment the local version of copyidx
+		   if (not copyall) && (panicStart == (-1)) then return () else	 
+		   	   helpCopyLoop ht oldkvs newkvs  oldlen copyall minCopyWork (copyidx + minCopyWork) panicStart --TODO process copyidx panicStart
 	
 -- TODO enter calls of helpCopy in the marked functions
 
