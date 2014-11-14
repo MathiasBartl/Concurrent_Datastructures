@@ -472,9 +472,13 @@ helpCopy ht  = do topkvs <- getHeadKvs ht
 	      helpCopyLoop ht oldkvs newkvs  oldlen copyall minCopyWork copyidx panicStart =  
 	       do copydone <- getCopyDone oldkvs 
 		  if copydone >= oldlen then return () else do    
-		   undefined -- TODO set panic_start -- TODO add copyidx what about copydone it is shared
-		   undefined 
-		   undefined
+		   --undefined -- TODO set panic_start -- TODO add copyidx what about copydone it is shared
+		   (copyidx,panicStart) <- if panicStart /= (-1) then return (copyidx,panicStart) else do 
+			-- TODO set copyidx using cas 
+			cpyidx <- casIncCopyIndex oldkvs oldlen copyidx -- TODO Question is it really oldkvs 
+		   	pncStrt <- if cpyidx < (shiftL oldlen 1) then return  panicStart else return cpyidx  -- TODO is the right copyidy returned
+			return (cpyidx,pncStrt)
+
 		   lstwd <- forM [0..minCopyWork] (\x -> copySlot ht (maskHash (mask oldkvs) (copyidx+x) ) oldkvs newkvs) -- actual copying -- TODO index
 		   workdone <- return $ sum $ map fromEnum lstwd -- sum lstwd
 		   if workdone > 0 then copyCheckAndPromote ht oldkvs workdone else return () -- TODO if workdone > 0 copy check and promote
@@ -604,7 +608,7 @@ tableFull recounter len sltcounter = do sltcn <- readCounter sltcounter
 					return $ recounter >= _reprobe_limit && --always allow a few reprobes
 				                 sltcn >= (reprobe_limit len)   -- kvs is quarter full
 
--- TODO add _copyIdx and _copyDoe to kvs, and write kvs for them
+
 -------------------------------------------------------------------------------------------------------------------------
 
 putIfMatch_T ::(Hashable key, Eq key, Eq value) =>
@@ -760,13 +764,22 @@ casNextKvs kvs nwkvs = do let kvsref = newkvs kvs
 -- TODO is this correctly
 
 -- TODO use tickets correctly here
-casHeadKvs :: ConcurrentHashTable key val -> Kvs key val -> Kvs key val -> IO ()
 casHeadKvs ht oldheadkvs newkvs = do ticket <- readForCAS $  kvs ht
 				     undefined -- TODO See if its still the old kvs in place, or actually would the correct thing not be
 -- too get the ticket at the very beginning, tha is actually the only thing that makes sense
 
 getLength :: Kvs key value -> Int
 getLength = V.length . slots
+
+
+casIncCopyIndex :: Kvs key val -> Size -> CopyIndex-> IO CopyIndex
+casIncCopyIndex kvs oldlen minCopyWork = do let copyindexref = copyIndex kvs
+					    ticket <- readForCAS copyindexref
+					    oldindex <- return $ peekTicket ticket
+					    if oldindex >= (shiftL oldlen 1) then return oldindex else do
+						(success,newticket) <- casIORef copyindexref ticket (oldindex + minCopyWork)
+						if success then return oldindex else casIncCopyIndex kvs oldlen minCopyWork -- TODO use the returned ticket instead of doing another readForCas
+					
 -------------------------------------------------------------------------------------------------------------
 
 -- | Returns the number of key-value mappings in this map
