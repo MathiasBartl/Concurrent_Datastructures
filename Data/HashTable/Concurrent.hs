@@ -87,14 +87,22 @@ import Test.QuickCheck.Arbitrary as QCA
 import Test.QuickCheck.Gen as QCG
 import Test.QuickCheck.Gen.Unsafe as QCGU
 
+import Data.Time.Clock (getCurrentTime, UTCTime, NominalDiffTime, DiffTime, secondsToDiffTime, diffUTCTime)
+
 -- TODO look for 32/64 bit issues, Magic Numbers
 
-
-
+-- Time
+-------------------------------------------------------------------------------------------------------------------------
 setLastResizeTime :: ConcurrentHashTable key value -> IO ()
-setLastResizeTime = undefined
+setLastResizeTime table = do let timeref = timeOfLastResize table
+			     timestamp <- getCurrentTime 
+			     writeIORef timeref timestamp-- TIMETODO
 
+type Time = UTCTime -- ^ time in milliseconds -- TODO should be long or something -- TIMETODO
+type Timespan = NominalDiffTime -- TIMETODO
 
+timediff = diffUTCTime
+------------------------------------------------------------------------------------------
 
 min_size_log = 3
 min_size = 2 ^ min_size_log --must be power of 2, compiler should turn this into a constant --TODO have this as a perprocessor constant, so it 
@@ -103,8 +111,8 @@ min_size = 2 ^ min_size_log --must be power of 2, compiler should turn this into
 max_size_log = 31
 max_size = 2 ^ max_size_log
 
-resize_milliseconds:: Time
-resize_milliseconds = 1000 -- FIXME question 1 second or 10 seconds
+resize_timespan:: Timespan-- TIMETODO make this difftime
+resize_timespan = realToFrac $ secondsToDiffTime 1 -- FIXME question 1 second or 10 seconds
 -- TODO put this value in the haddock documentation
 
 -- FIXME whats the defined behaviour, if the hashtable gets really full, better, to throw an error, than to somehow fail or hang
@@ -167,7 +175,6 @@ type Mask = SlotsIndex
 type Size = Int
 type SizeLog = Int
 
-type Time = Int64 -- ^ time in milliseconds -- TODO should be long or something
 
 type ReprobeCounter = Int
 
@@ -298,13 +305,6 @@ getSlot slots mask key =  do let fllhash = fullHash key
 		      getSlt slots rpcntr newkey idx mask =
                         do let slot = (slots V.! idx) :: (Slot key value)
                            oldkey <- (readKeySlot slot)::IO(Key key)
-			   -- TODO error that the table is not already full, then remove this assertion as soon as
-			   -- resizing works, this should make sure that tests that rely on resizing fail with an error instead of hang
--- FIXME REMOVE
-			   sz <- return $ V.length slots
-			   if rpcntr > sz  -- every slot has already been probed
-				then ioError $ userError "Table is full and resizing does not work." else return ()
--- FIXME REMOVE
                            if full oldkey newkey 
                                        then getSlt slots (incReprobeCounter rpcntr) newkey (collision idx mask) mask -- Reprobe
                                        else return (slot,rpcntr) -- Found a Slot that has eiter an fitting or an empty key
@@ -580,7 +580,7 @@ resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
 		     if  hasnextkvs then do newkvs <- getNextKvs oldkvs
 					    return newkvs
 			else undefined -- TODO
-	where  heuristicNewSize:: Size -> SizeCounter -> Time -> Time -> SlotsCounter -> IO Size
+	where  heuristicNewSize:: Size -> SizeCounter -> Time -> Time -> SlotsCounter -> IO Size -- TIMETODO
 	       heuristicNewSize len szcntr oldtime newtime sltcntr = do sz <- readCounter szcntr
 									slts <- readCounter sltcntr
 									newsze <- return sz
@@ -588,7 +588,7 @@ resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
 									newsze <- return $ if sz >= (shiftR len 2) then
 									   if sz >= (shiftR len 1) then  shiftL len 2 else shiftL len 1  else newsze
 									newsze <- return $ if (newsze <= len) 
-									  && (newtime - oldtime <= resize_milliseconds)
+									  && ((timediff newtime   oldtime) <= resize_timespan) -- TIMETODO
 									  && (slts >= (shiftL sz 1))  
 									  then shiftL len 1 else newsze
 									newsze <- return $ if newsze < len then len else newsze
@@ -932,7 +932,8 @@ newConcurrentHashTableHint hint = do let size = normSize hint
 				     timer <- newTimer
 				     return $ ConcurrentHashTable kvsref timer
 	where newTimer :: IO (IORef Time)
-	      newTimer = newIORef 0 -- TODO set actuall time                                    
+	      newTimer = do time <- getCurrentTime 
+			    newIORef time -- TODO set actuall time -- TIMETODO                                   
 -- TODO throw error if size <0
 
 -- | Returns the next larger potency of 2

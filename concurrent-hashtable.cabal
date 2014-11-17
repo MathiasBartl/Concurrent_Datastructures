@@ -29,7 +29,7 @@ Description:
 
 Library
   exposed-modules: Data.HashTable.Concurrent
-  build-depends: atomic-primops >= 0.6.0.5, hashable >= 1.2.2.0, base >=4.0 && <5.0, vector >= 0.10.10.0, either-unwrap >= 1.1, QuickCheck >= 2.0
+  build-depends: atomic-primops >= 0.6.0.5, hashable >= 1.2.2.0, base >=4.0 && <5.0, vector >= 0.10.10.0, either-unwrap >= 1.1, time >= 1.4.2, QuickCheck >= 2.0
   ghc-options: -O2
 
 Test-Suite test-placeholder-sequential
