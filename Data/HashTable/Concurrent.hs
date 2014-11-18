@@ -34,14 +34,7 @@
 module Data.HashTable.Concurrent 
 	( 
 	  -- * Alpha version limitations
-	  -- | Table resize is not working, use 'newConcurrentHashTableHint' and 'clearHint' with appropirate /hint/ for the number of slots!
-	  -- For technical reasons once a slot has been used for a given key-value  it can not be reused with a different key even after
-	  -- the original mapping has been removed.
-	  --
-	  -- Be /n/ the maximum number of mappings stored in the hashtable at any time, and /k/ the size of the set of all keys entered over the 
-          -- entire lifespan of the hashtable. It is not only required that /hint > n/ but also /hint > k/.
-          -- 
-          -- In order to reduce the number of reprobes we recommend that at last /hint > 8k/.
+
           --
           -- * Maximum number of slots
           --
@@ -102,6 +95,14 @@ type Time = UTCTime -- ^ time in milliseconds -- TODO should be long or somethin
 type Timespan = NominalDiffTime -- TIMETODO
 
 timediff = diffUTCTime
+
+
+getTime :: IO Time
+getTime = getCurrentTime
+
+getLastResizeTime :: ConcurrentHashTable key value -> IO Time
+getLastResizeTime table = do let timeref = timeOfLastResize table
+			     readIORef timeref
 ------------------------------------------------------------------------------------------
 
 min_size_log = 3
@@ -160,6 +161,7 @@ data Kvs k v =   Kvs {
 	, sizeCounter :: SizeCounter
 	, _copyDone :: IORef CopyDone
 	, copyIndex :: IORef CopyIndex  
+	-- TODO add resizers, counter?
 }
 
 
@@ -174,6 +176,8 @@ type SlotsIndex = Int
 type Mask = SlotsIndex
 type Size = Int
 type SizeLog = Int
+
+type Resizers = Int
 
 
 type ReprobeCounter = Int
@@ -579,7 +583,20 @@ resize :: ConcurrentHashTable key value -> Kvs key value -> IO (Kvs key value)
 resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
 		     if  hasnextkvs then do newkvs <- getNextKvs oldkvs
 					    return newkvs
-			else undefined -- TODO
+			else do
+			  let sltscntr = slotsCounter oldkvs
+			      szcntr = sizeCounter oldkvs
+			      sz = getLength oldkvs
+			  oldtime <- getLastResizeTime ht
+			  newtime <- getTime
+			  newsz <- heuristicNewSize sz szcntr oldtime newtime sltscntr
+			  -- TODO compute log of newsz -- TODO for what purpose?
+			  -- TODO casinc resizer count -- TODO create an appropriate field in kvs  todo why the resizers field
+			  -- TODO backoff if already lots of resizers
+			  -- TODO test again if resize already in progress -- TODO why?
+			  -- TODO create and cas newkvs todo test if already done again
+			  -- TODO other copy stuff	
+			  undefined -- TODO
 	where  heuristicNewSize:: Size -> SizeCounter -> Time -> Time -> SlotsCounter -> IO Size -- TIMETODO
 	       heuristicNewSize len szcntr oldtime newtime sltcntr = do sz <- readCounter szcntr
 									slts <- readCounter sltcntr
@@ -593,7 +610,7 @@ resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
 									  then shiftL len 1 else newsze
 									newsze <- return $ if newsze < len then len else newsze
 									return $ normSize newsze-- TODO assert table is not shrinking
--- TODO more functional coding, or at least seperate ST, IO, handle time better
+-- TODO more functional coding, or at least seperate ST, IO, 
 
 -- TODO add resize to putIfMatch
 
@@ -1161,3 +1178,10 @@ htGen htsize keysize (Right valuegen) = do gen <- h2
 
 -- TODO how about an instance of arbitrary
 -- |Set of Keys| = size , |List of Values| = size all genratet with size parameter, zip and put, actually not that compilcated
+
+
+
+--code to write:
+--copy one pair
+--resize
+--is headkvs
