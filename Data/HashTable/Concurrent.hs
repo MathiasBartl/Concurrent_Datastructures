@@ -160,7 +160,8 @@ data Kvs k v =   Kvs {
 	, slotsCounter :: SlotsCounter
 	, sizeCounter :: SizeCounter
 	, _copyDone :: IORef CopyDone
-	, copyIndex :: IORef CopyIndex  
+	, copyIndex :: IORef CopyIndex
+	, resizers :: IORef Resizers  
 	-- TODO add resizers, counter?
 }
 
@@ -611,6 +612,15 @@ resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
 									newsze <- return $ if newsze < len then len else newsze
 									return $ normSize newsze-- TODO assert table is not shrinking
 -- TODO more functional coding, or at least seperate ST, IO, 
+	       megs :: Int -> Int -- TODO newtypes possibly
+	       megs log2 = shiftR (shiftL ((shiftL (shiftL 1 log2) 1) + 4) 3) 20
+	       getResizers :: Kvs key value -> IO Resizers
+	       getResizers kvs = do let resref = resizers kvs
+			            readIORef resref
+	       incCASResizers :: Kvs key value -> IO ()
+	       incCASResizers kvs = do let resref = resizers kvs
+				       ticket <- readForCAS resref
+				       undefined -- TODO any reason not to use atomicCounter?
 
 -- TODO add resize to putIfMatch
 
@@ -969,7 +979,8 @@ newKvs size  counter = do let msk = getMask size
 			  kvsref <- noKvs
 			  copyDone <- newIORef 0
 			  copyIndex <- newCopyIndex
-	                  return $ Kvs kvsref slts msk sltcntr counter copyDone copyIndex
+			  resizers <- newResizers
+	                  return $ Kvs kvsref slts msk sltcntr counter copyDone copyIndex resizers
 	where
 		newSlots :: Size -> IO( Slots key val)
 		newSlots size = V.replicateM size newSlot -- TODO
@@ -980,6 +991,7 @@ newKvs size  counter = do let msk = getMask size
 			     valref <- newIORef T     -- TODO optimize somewhere, somewhat 
 			     return $ Slot keyref valref 
 		newCopyIndex = newIORef 0
+		newResizers = newIORef 0
 		
 
 --Debug code -- TODO make inclusion conditional with preprocessor or something for DEBUG only
