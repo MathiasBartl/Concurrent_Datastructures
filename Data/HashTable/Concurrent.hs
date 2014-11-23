@@ -83,6 +83,8 @@ import Test.QuickCheck.Gen.Unsafe as QCGU
 import Data.Time.Clock (getCurrentTime, UTCTime, NominalDiffTime, DiffTime, secondsToDiffTime, diffUTCTime)
 import Control.Concurrent (threadDelay)
 
+import Math.NumberTheory.Logarithms (intLog2)
+
 -- TODO look for 32/64 bit issues, Magic Numbers
 
 -- Time
@@ -430,7 +432,6 @@ casValueSlot slt@(Slot _ va) cmpvaluecomp newvalue = do
 	matchesVal oldvalue (Right MATCH_ANY) _ = not $ isTombstone oldvalue --oldvalue is not a tombstone  --FIXME, RESIZE related PRIMED,SENTINEL 
 	matchesVal oldvalue (Right NO_MATCH_OLD) newvalue = not $ valComp oldvalue newvalue -- newvalue != oldvalue 	
 	matchesVal oldvalue (Left cmpvalue) _ = valComp oldvalue cmpvalue --oldvalue == cmpvalue --FIXME, RESIZE related PRIMED,SENTINEL
-	casVal = undefined
 --matchesVal is resize ignorant
 -- TODO lets think about how to threat primed values
 
@@ -478,7 +479,7 @@ helpCopy ht  = do topkvs <- getHeadKvs ht
 	      helpCopyLoop ht oldkvs newkvs  oldlen copyall minCopyWork copyidx panicStart =  
 	       do copydone <- getCopyDone oldkvs 
 		  if copydone >= oldlen then return () else do    
-		   --undefined -- TODO set panic_start -- TODO add copyidx what about copydone it is shared
+		    -- TODO set panic_start -- TODO add copyidx what about copydone it is shared
 		   (copyidx,panicStart) <- if panicStart /= (-1) then return (copyidx,panicStart) else do 
 			-- TODO set copyidx using cas 
 			cpyidx <- casIncCopyIndex oldkvs oldlen copyidx -- TODO Question is it really oldkvs 
@@ -613,7 +614,6 @@ resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs -- TODO clean up the code
 			  -- TODO test again if resize already in progress -- TODO why?
 			  -- TODO create and cas newkvs todo test if already done again
 			  -- TODO other copy stuff	
-			  undefined -- TODO resizers
 	where  heuristicNewSize:: Size -> SizeCounter -> Time -> Time -> SlotsCounter -> IO Size -- TIMETODO
 	       heuristicNewSize len szcntr oldtime newtime sltcntr = do sz <- readCounter szcntr
 									slts <- readCounter sltcntr
@@ -990,7 +990,7 @@ normSize inputSize = max min_size (sizeHelp inputSize 1)
 
 
 log2size :: Size -> SizeLog
-log2size size = undefined
+log2size size = (intLog2 size) +1 -- Should be 
 
 --size has to be power of 2
 newKvs :: Size -> SizeCounter-> IO(Kvs key val)
