@@ -81,6 +81,7 @@ import Test.QuickCheck.Gen as QCG
 import Test.QuickCheck.Gen.Unsafe as QCGU
 
 import Data.Time.Clock (getCurrentTime, UTCTime, NominalDiffTime, DiffTime, secondsToDiffTime, diffUTCTime)
+import Control.Concurrent (threadDelay)
 
 -- TODO look for 32/64 bit issues, Magic Numbers
 
@@ -581,7 +582,7 @@ getCopyDoneRef :: Kvs key value -> IORef CopyDone
 getCopyDoneRef = _copyDone
 
 resize :: ConcurrentHashTable key value -> Kvs key value -> IO (Kvs key value)
-resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
+resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs -- TODO clean up the code
 		     if  hasnextkvs then do newkvs <- getNextKvs oldkvs
 					    return newkvs
 			else do
@@ -591,13 +592,28 @@ resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
 			  oldtime <- getLastResizeTime ht
 			  newtime <- getTime
 			  newsz <- heuristicNewSize sz szcntr oldtime newtime sltscntr
+			  mgs <- return $ megs $ log2size newsz  -- binary log of newsize
+			  res <- incCASResizers oldkvs
+			  if not ((res >= 2) && (mgs > 0)) then return () else do 
+				hasnextkvs <- hasNextKvs oldkvs
+	                        if  hasnextkvs then do newkvs <- getNextKvs oldkvs
+				                       return () -- FIXME this results in another test befor terminating
+				  else threadDelay (8*mgs) -- sleep for milliseconds TODO compilers other than ghc
+			  hasnextkvs <- hasNextKvs oldkvs
+	                  if  hasnextkvs then do newkvs <- getNextKvs oldkvs
+			                         return newkvs
+						else do     newkvs <- newKvs newsz szcntr
+						            hasnextkvs <- hasNextKvs oldkvs
+		     					    if  hasnextkvs then getNextKvs oldkvs
+								else casNextKvs oldkvs newkvs
+				-- 
 			  -- TODO compute log of newsz -- TODO for what purpose?
 			  -- TODO casinc resizer count -- TODO create an appropriate field in kvs  todo why the resizers field
 			  -- TODO backoff if already lots of resizers
 			  -- TODO test again if resize already in progress -- TODO why?
 			  -- TODO create and cas newkvs todo test if already done again
 			  -- TODO other copy stuff	
-			  undefined -- TODO
+			  undefined -- TODO resizers
 	where  heuristicNewSize:: Size -> SizeCounter -> Time -> Time -> SlotsCounter -> IO Size -- TIMETODO
 	       heuristicNewSize len szcntr oldtime newtime sltcntr = do sz <- readCounter szcntr
 									slts <- readCounter sltcntr
@@ -613,11 +629,11 @@ resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
 									return $ normSize newsze-- TODO assert table is not shrinking
 -- TODO more functional coding, or at least seperate ST, IO, 
 	       megs :: Int -> Int -- TODO newtypes possibly
-	       megs log2 = shiftR (shiftL ((shiftL (shiftL 1 log2) 1) + 4) 3) 20
+	       megs log2 = shiftR (shiftL ((shiftL (shiftL 1 log2) 1) + 4) 3) 20 -- TODO replace magic numbers with constant -- FIXME this is for the java version haskell version has different memory layout; at the moment this should be bigger
 	       getResizers :: Kvs key value -> IO Resizers
-	       getResizers kvs = do let resref = resizers kvs
+	       getResizers kvs = do let resref = resizers kvs -- TODO do we need this function
 			            readIORef resref
-	       incCASResizers :: Kvs key value -> IO ()
+	       incCASResizers :: Kvs key value -> IO Resizers
 	       incCASResizers kvs = do let resref = resizers kvs
 				       ticket <- readForCAS resref
 				       undefined -- TODO any reason not to use atomicCounter?
@@ -780,12 +796,13 @@ noKvs :: IO (IORef (Maybe (Kvs key val)))
 noKvs = newIORef Nothing
 
 
---cas the newkvs field, returns true if previously empty otherwise false  
-casNextKvs :: Kvs key val -> Kvs key val -> IO Bool
+--cas the newkvs field, returns the value in the newkvs field wether cas was succesfull or not  
+casNextKvs :: Kvs key val -> Kvs key val -> IO (Kvs key val) -- TODO return the kvs wether
 casNextKvs kvs nwkvs = do let kvsref = newkvs kvs
 			  oldticket <- readForCAS kvsref
-			  if isJust $ peekTicket oldticket then return False else do (success, _) <- casIORef kvsref oldticket (Just nwkvs)
-			   						             return $ success
+			  if isJust $ peekTicket oldticket then return $ fromJust $ peekTicket oldticket else do
+					 (_, newticket) <- casIORef kvsref oldticket (Just nwkvs)
+                                         return $ fromJust $ peekTicket newticket
  -- TODO rewrite the other cas stuff accordigly
 -- TODO (Just IORef a) is a stupid construction because seting the IORef from Nothing to Just changes an immutable datastructure also you cant do an cas on the Maybe type, todo have some value of IORef that says nothing
 -- TODO is this correctly
@@ -970,6 +987,10 @@ normSize inputSize = max min_size (sizeHelp inputSize 1)
 	where sizeHelp :: Size -> Size -> Size
 	      sizeHelp input size = if (size >= input) || (size == max_size)  then size else sizeHelp input (shiftL size 1)	
 --FIXME TODO guard for Integer overun meaning some maximum size has to be set
+
+
+log2size :: Size -> SizeLog
+log2size size = undefined
 
 --size has to be power of 2
 newKvs :: Size -> SizeCounter-> IO(Kvs key val)
