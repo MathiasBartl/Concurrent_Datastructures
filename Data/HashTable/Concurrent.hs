@@ -94,7 +94,7 @@ setLastResizeTime table = do let timeref = timeOfLastResize table
 			     timestamp <- getCurrentTime 
 			     writeIORef timeref timestamp-- TIMETODO
 
-type Time = UTCTime -- ^ time in milliseconds -- TODO should be long or something -- TIMETODO
+type Time = UTCTime -- ^ time in milliseconds  -- TIMETODO
 type Timespan = NominalDiffTime -- TIMETODO
 
 timediff = diffUTCTime
@@ -115,7 +115,7 @@ min_size = 2 ^ min_size_log --must be power of 2, compiler should turn this into
 max_size_log = 31
 max_size = 2 ^ max_size_log
 
-resize_timespan:: Timespan-- TIMETODO make this difftime
+resize_timespan:: Timespan-- TIMETODO 
 resize_timespan = realToFrac $ secondsToDiffTime 1 -- FIXME question 1 second or 10 seconds
 -- TODO put this value in the haddock documentation
 
@@ -165,7 +165,7 @@ data Kvs k v =   Kvs {
 	, _copyDone :: IORef CopyDone
 	, copyIndex :: IORef CopyIndex
 	, resizers :: IORef Resizers  
-	-- TODO add resizers, counter?
+	
 }
 
 
@@ -636,7 +636,12 @@ resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs -- TODO clean up the code
 	       incCASResizers :: Kvs key value -> IO Resizers
 	       incCASResizers kvs = do let resref = resizers kvs
 				       ticket <- readForCAS resref
-				       undefined -- TODO any reason not to use atomicCounter?
+				       incR ticket resref
+		 where	incR :: Ticket Resizers-> IORef Resizers-> IO Resizers
+			incR tic ref = do let val = peekTicket tic
+					  (success, oldtic) <- casIORef ref tic (val+1)
+					  if success then return val else incR oldtic ref
+				       -- TODO any reason not to use atomicCounter?
 
 -- TODO add resize to putIfMatch
 
