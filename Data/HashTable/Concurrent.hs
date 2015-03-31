@@ -828,12 +828,12 @@ idKvs a b = getHeadKey a == getHeadKey b
 -- Each kvs has its unique area of memory
 
 
-casHeadKvs2 :: ConcurrentHashTable key val -> IORef(Kvs key val) -> Kvs key val -> IO ()
-casHeadKvs2 = undefined
+--casHeadKvs2 :: ConcurrentHashTable key val -> IORef(Kvs key val) -> Kvs key val -> IO ()
+--casHeadKvs2 = undefined
 
 
-casHeadKvs3 :: ConcurrentHashTable key val -> Ticket(Kvs key val) -> Kvs key val -> IO ()
-casHeadKvs3 = undefined
+--casHeadKvs3 :: ConcurrentHashTable key val -> Ticket(Kvs key val) -> Kvs key val -> IO ()
+--casHeadKvs3 = undefined
 
 getLength :: Kvs key value -> Int
 getLength = V.length . slots

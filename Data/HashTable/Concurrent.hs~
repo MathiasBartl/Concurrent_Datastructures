@@ -824,7 +824,7 @@ casHeadKvs ht oldheadkvs newkvs = do let kvsref = kvs ht
 
 idKvs ::Kvs key val -> Kvs key val -> Bool
 idKvs a b = getHeadKey a == getHeadKey b
-		where getHeadKey k = key $ head $ slots k					 
+		where getHeadKey k = key $ V.head $ slots k					 
 -- Each kvs has its unique area of memory
 
 
