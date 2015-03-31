@@ -1,0 +1,9 @@
+Test suite test-placeholder-concurrent: RUNNING...
+test_consistency_without_resize: [OK, passed 900 tests]
+
+         Properties  Total      
+ Passed  1           1          
+ Failed  0           0          
+ Total   1           1          
+Test suite test-placeholder-concurrent: PASS
+Test suite logged to: dist/test/concurrent-hashtable-0.0.0.1-test-placeholder-concurrent.log

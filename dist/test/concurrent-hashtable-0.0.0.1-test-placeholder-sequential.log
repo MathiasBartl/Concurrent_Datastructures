@@ -1,0 +1,79 @@
+Test suite test-placeholder-sequential: RUNNING...
+ConcurrentHashtable:
+Kvs number 0 
+Is newest Kvs.
+Mask: 111
+sizeCounter:
+ Countervalue: 1
+slotsCounter:
+ Countervalue: 1
+Slots:
+Vector length: 8
+Slot:
+Key:
+Key empty
+Value:
+Tombstone
+Slot:
+Key:
+Key empty
+Value:
+Tombstone
+Slot:
+Key:
+Key: 10
+Value:
+Value: 10
+Slot:
+Key:
+Key empty
+Value:
+Tombstone
+Slot:
+Key:
+Key empty
+Value:
+Tombstone
+Slot:
+Key:
+Key empty
+Value:
+Tombstone
+Slot:
+Key:
+Key empty
+Value:
+Tombstone
+Slot:
+Key:
+Key empty
+Value:
+Tombstone
+END.
+:test1: [OK]
+:put: [OK]
+:put to erased slot: [OK]
+:get: [OK]
+:putIfAbsent: [OK]
+:remove: [OK]
+:removeKey: [OK]
+:replace: [OK]
+:replaceTest: [OK]
+:clear: [OK]
+:isEmpty: [OK]
+:size: [OK]
+:containsValue: [OK]
+:containsKey: [OK]
+:newConcurrentHashTableHint: [OK]
+:unnecessary_key_writes: [OK]
+:getNumberOfOngoingResizes: [OK]
+:getLengthsOfVectors: [OK]
+:getSlotsCounters: [OK]
+:getReprobeCount: [OK]
+
+         Test Cases   Total       
+ Passed  20           20          
+ Failed  0            0           
+ Total   20           20          
+Test suite test-placeholder-sequential: PASS
+Test suite logged to: dist/test/concurrent-hashtable-0.0.0.1-test-placeholder-sequential.log

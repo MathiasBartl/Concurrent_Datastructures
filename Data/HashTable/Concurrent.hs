@@ -166,11 +166,10 @@ data Kvs k v =   Kvs {
 	, copyIndex :: IORef CopyIndex
 	, resizers :: IORef Resizers  
 	
-}
+} 
 
-
-type SlotsCounter = AtomicCounter
-type SizeCounter  = AtomicCounter
+type SlotsCounter = AtomicCounter 
+type SizeCounter  = AtomicCounter 
 
 type FullHash = SlotsIndex
 type CopyDone = SlotsIndex -- originaly an atomic-long-field updater
@@ -783,7 +782,8 @@ getHeadKvs table = do let kvsref= kvs table
 
 isHeadKvs :: ConcurrentHashTable key val -> Kvs key val -> IO Bool
 isHeadKvs ht kv = do let headref = kvs ht  -- TODO Does this have to be in IO, ok
- 		     return undefined -- TODO ok, I wanted to make an pointer coparision, this would if it was a good idea require me to pass an IOref as parameter, witch would screw up the interface
+ 		     hkv <- readIORef headref
+		     return $ idKvs hkv kv  -- TODO ok, I wanted to make an pointer coparision, this would if it was a good idea require me to pass an IOref as parameter, witch would screw up the interface
 --gets then new resizedtable, throws error if does not exist
 getNextKvs :: Kvs key val -> IO(Kvs key val)
 getNextKvs kv = do let kvsref =  newkvs kv  --throws error
@@ -816,11 +816,24 @@ casNextKvs kvs nwkvs = do let kvsref = newkvs kvs
 casHeadKvs :: ConcurrentHashTable key val ->  Kvs key val -> Kvs key val -> IO ()
 casHeadKvs ht oldheadkvs newkvs = do let kvsref = kvs ht
 				     oldticket <- readForCAS kvsref
-				     if  not ((peekTicket oldticket) == oldheadkvs) then return $ () else do
+				     if  not (idKvs (peekTicket oldticket)  oldheadkvs) then return $ () else do -- TODO comparision of kvs ses
 					(_,_) <- casIORef kvsref oldticket newkvs
 					return ()
  -- TODO See if its still the old kvs in place, or actually would the correct thing not be
 -- too get the ticket at the very beginning, tha is actually the only thing that makes sense
+
+idKvs ::Kvs key val -> Kvs key val -> Bool
+idKvs a b = getHeadKey a == getHeadKey b
+		where getHeadKey k = key $ V.head $ slots k					 
+-- Each kvs has its unique area of memory
+
+
+casHeadKvs2 :: ConcurrentHashTable key val -> IORef(Kvs key val) -> Kvs key val -> IO ()
+casHeadKvs2 = undefined
+
+
+casHeadKvs3 :: ConcurrentHashTable key val -> Ticket(Kvs key val) -> Kvs key val -> IO ()
+casHeadKvs3 = undefined
 
 getLength :: Kvs key value -> Int
 getLength = V.length . slots
