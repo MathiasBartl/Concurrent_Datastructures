@@ -812,9 +812,14 @@ casNextKvs kvs nwkvs = do let kvsref = newkvs kvs
 -- TODO (Just IORef a) is a stupid construction because seting the IORef from Nothing to Just changes an immutable datastructure also you cant do an cas on the Maybe type, todo have some value of IORef that says nothing
 -- TODO is this correctly
 
--- TODO use tickets correctly here
-casHeadKvs ht oldheadkvs newkvs = do ticket <- readForCAS $  kvs ht
-				     undefined -- TODO See if its still the old kvs in place, or actually would the correct thing not be
+--TODO use oldheadkvs
+casHeadKvs :: ConcurrentHashTable key val ->  Kvs key val -> Kvs key val -> IO ()
+casHeadKvs ht oldheadkvs newkvs = do let kvsref = kvs ht
+				     oldticket <- readForCAS kvsref
+				     if  not ((peekTicket oldticket) == oldheadkvs) then return $ () else do
+					(_,_) <- casIORef kvsref oldticket newkvs
+					return ()
+ -- TODO See if its still the old kvs in place, or actually would the correct thing not be
 -- too get the ticket at the very beginning, tha is actually the only thing that makes sense
 
 getLength :: Kvs key value -> Int
