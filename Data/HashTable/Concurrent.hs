@@ -85,6 +85,8 @@ import Control.Concurrent (threadDelay)
 
 import Math.NumberTheory.Logarithms (intLog2)
 
+import Control.Exception (assert) -- Assert
+
 -- TODO look for 32/64 bit issues, Magic Numbers
 
 -- Time
@@ -288,6 +290,9 @@ isTombstone :: Value val -> Bool
 isTombstone T = True
 isTombstone _ = False
 
+isUntoucedValue :: Value val -> Bool
+isUntoucedValue = isTombstone
+
 isValue :: Value val -> Bool
 isValue (V _) = True
 isValue _ = False
@@ -381,6 +386,12 @@ get_impl table kvs key          = do let msk = mask kvs
 -- Accessing the slot
 --------------------------------------------------------------------------------------------------------------------------------
 
+-- does not wrap around the idx according to mask
+
+kvsSlot :: Kvs key value -> SlotsIndex -> Slot key value
+kvsSlot kvs idx = (slots kvs)  V.! idx
+	
+
 readKeySlot:: Slot key value -> IO (Key key)
 readKeySlot state = readIORef ( key state  )
 		
@@ -463,7 +474,8 @@ casStripPrime slt@(Slot _ va) = do oldticket <- readForCAS va
 
 
 --
-helpCopy :: ConcurrentHashTable key value ->  IO ()
+helpCopy :: forall key value . (Hashable key, Eq key, Eq value) => 
+	ConcurrentHashTable key value ->  IO ()
 helpCopy ht  = do topkvs <- getHeadKvs ht
 		  resizeinprogress <- hasNextKvs topkvs -- if a resize starts after this test its like the function was called before the start of the resize
 		  if not resizeinprogress then return () else helpCopyImpl ht topkvs False
@@ -519,9 +531,37 @@ copyOnePair slt newkvs = do undefined -- TODO read Slot
 	      putAndReturnSlot key val kvs = undefined
     
 -- TODO is the same as copyOnePair? compare type signature
-copySlot :: ConcurrentHashTable key value -> SlotsIndex -> Kvs key value -> Kvs key value -> IO Bool
-copySlot ht idx oldkvs newkvs = undefined
- 
+copySlot :: forall key value . (Hashable key, Eq key, Eq value)=> 
+	ConcurrentHashTable key value -> SlotsIndex -> Kvs key value -> Kvs key value -> IO Bool
+copySlot ht idx oldkvs newkvs = do let oldslot = kvsSlot oldkvs idx
+				       newslot = kvsSlot newkvs idx-- TODO we assume that idx is always in bound for oldkvs, and that newkvs is also larger than oldkvs TODO write this into an assertion
+				   ky <- readKeySlot oldslot
+				   (finished,copied,oldvalueunprimed) <- primeOldValue oldslot
+				   if finished then return copied else do
+				   	oldnewkvsvalue <- putIfMatch newkvs ky oldvalueunprimed (Left T) -- put in unused slot
+				   	copied <- return $ isUntoucedValue  oldnewkvsvalue  
+				   	slamValue oldslot
+				   	return copied
+	where slamValue :: Slot key value -> IO ()
+	      slamValue slt = do oldval <- readValueSlot slt
+				 (suc, oldval) <- casValueSlot slt (Left oldval) Tp
+				 if suc then return () else slamValue slt -- TODO this could possibly be done with a simple write but then migh require an implicit fence
+	      primeOldValue :: Slot key value -> IO (Bool,Bool,Value value)
+	      primeOldValue slot = do val <- readValueSlot slot
+				      if isPrimedValue val && val == Tp then return (True,False,Tp) else
+					if isPrimedValue val && val /= Tp then return (False,False,val) else
+						do let primedval = primeValue val
+						   (suc,_) <- casValueSlot slot (Left val) primedval -- cas value
+						   if not suc then primeOldValue slot else 
+							   if primedval == Tp then return (True,True,Tp) else return (False, False, primedval) -- return depending on wether tp, TODO put this into an loop
+	      primeValue :: Value value -> Value value
+	      primeValue (V val) = Vp val
+	      primeValue T     = Tp 
+	      primeValue _     = undefined -- TODO what happens on Sentinels, assert input is not primed	
+-- TODO slam key of oldslot for minor speed optimisation
+-- TODO prime old value
+-- TODO copy into new
+-- TODO tombprime oldvalue 
 
 
 
@@ -536,9 +576,10 @@ removeOldestKvs ht = do let htKvsRef = kvs ht
 			writeIORef htKvsRef secondOldestKvs
 			--oldestKvs will be GCted, one could explicitly destroy oldestKvs here
 
-copySlotAndCheck :: ConcurrentHashTable key value -> Kvs key value -> SlotsIndex -> Bool -> IO () --(Kvs key value) -- TODO make type signature
+copySlotAndCheck :: forall key value . (Hashable key, Eq key, Eq value) => 
+	ConcurrentHashTable key value -> Kvs key value -> SlotsIndex -> Bool -> IO () --(Kvs key value) -- TODO make type signature
 copySlotAndCheck  ht oldkvs idx shouldHelp = do newkvs <- getNextKvs oldkvs -- TODO originally theres a volatile read
-						success <- undefined -- TODO Copy Slot
+						success <- copySlot ht idx  oldkvs newkvs 
 						if success then copyCheckAndPromote ht oldkvs 1 else return ()
 						if not shouldHelp then return () else  -- TODO possible return newkvs here
 							helpCopy ht -- TODO does helpCopy need any further parameters

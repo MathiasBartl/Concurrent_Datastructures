@@ -124,8 +124,8 @@ instance QCA.Arbitrary ThreadParams where
 
 
 
-test_lotsof_put = TestCase ( do let numberOfThreads = 128
-				    valuesPerThread = 10000000 
+test_lotsof_put = TestCase ( do let numberOfThreads = 4
+				    valuesPerThread = 1 
 				ht <- emptySetupInt
 				forM_ [0..(numberOfThreads-1)] 
 					(\number -> withAsync (lotsof_put ht 
@@ -143,8 +143,8 @@ lotsof_put ht inp = do forM_ inp (\int -> HT.put ht int int)
 
 --TODO test withou resize, no puts are forgotten
 
---tests = TestList [ TestLabel "lotsof_put" test_lotsof_put]
-tests = TestList []  --FIXME get the resize relatet tests going with a time limit
+tests = TestList [ TestLabel "lotsof_put" test_lotsof_put]
+--tests = TestList []  --FIXME get the resize relatet tests going with a time limit
 
 --TODO main method
 main :: IO ()
