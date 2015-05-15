@@ -277,7 +277,8 @@ primeValue :: Value val -> Value val
 primeValue (V v) = Vp v
 
 isSentinel :: Value val -> Bool
-isSentinel S = True
+isSentinel S = True -- FIXME
+isSentinel Tp = True -- FIXME Sentinel is probably the same as Tombstone primed 
 isSentinel _ = False
 
 
@@ -369,7 +370,7 @@ get_impl table kvs key          = do let msk = mask kvs
 				     k <- readKeySlot slt
 				     v <- readValueSlot slt
 				     if keyComp k key
-                                        then if isSentinel v  
+                                        then if (isSentinel v) ||  (isPrimedValue v)  -- FIXME what happens in case of primed value
 						then do ass <- hasNextKvs kvs
 							return $ assert ass 
 							newkvs <- getNextKvs kvs
