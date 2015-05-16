@@ -124,8 +124,8 @@ instance QCA.Arbitrary ThreadParams where
 
 
 
-test_lotsof_put = TestCase ( do let numberOfThreads = 4
-				    valuesPerThread = 1 
+test_lotsof_put = TestCase ( do let numberOfThreads = 64
+				    valuesPerThread = 100000 
 				ht <- emptySetupInt
 				forM_ [0..(numberOfThreads-1)] 
 					(\number -> withAsync (lotsof_put ht 
