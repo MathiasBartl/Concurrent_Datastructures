@@ -134,11 +134,11 @@ getMask size = size -1
 
 --data representation
 ---------------------------------------------------------------------------------------------------------------------------------
--- Kempty : empty, K : neverchanging key
+-- Kempty : empty, K : neverchanging key, KT copied into newer kvs
 --data Key key = Kempty | K key deriving (Eq) 
   -- TODO make instance of Eq 
   -- TODO do keys need to be primed
-data Key k = Kempty 
+data Key k = Kempty | KT 
            | Key { fullHash :: !FullHash
 		 , keyE :: !k
 		 } 
@@ -305,6 +305,7 @@ isValue _ = False
 -- TODO possibly return whether the slot has a key or the key is empty
 -- TODO testcases for reprobe
 -- FIXME does not terminate if reprobes infinitly or very often, best would be to return an Maybe
+-- TODO return maybe of reprobcnter exceds maximum
 -- | Reprobes until it find an Slot with a fitting or empty key
 getSlot :: forall key value . (Eq key) =>  
            Slots key value -> Mask -> Key key -> IO(Slot key value, ReprobeCounter)
@@ -366,11 +367,11 @@ get_impl :: (Eq key, Hashable key) =>
             ConcurrentHashTable key val -> Kvs key val -> Key key  -> IO(Value val)
 get_impl table kvs key          = do let msk = mask kvs
                                          slts = slots kvs
-				     (slt,_) <- getSlot  slts msk key
+				     (slt,_) <- getSlot  slts msk key -- TODO if reprobecntr exceeds
 				     k <- readKeySlot slt
 				     v <- readValueSlot slt
 				     if keyComp k key
-                                        then if (isSentinel v) ||  (isPrimedValue v)  -- FIXME what happens in case of primed value
+                                        then if (isSentinel v) ||  (isPrimedValue v)  -- FIXME what happens in case of primed value, is it possible an value has been primed but not yet copied
 						then do ass <- hasNextKvs kvs
 							return $ assert ass 
 							newkvs <- getNextKvs kvs
@@ -733,24 +734,30 @@ putIfMatch kvs key putVal expVal = do
     then if ((isTombstone putVal) || expVal == Right MATCH_ANY || if isLeft expVal then not $ isTombstone $ fromLeft expVal else False)
  -- if oldkey empty and MATCH_ANY do nothing
          then return T {-TODO break writing value unnecessary -} 
-         else ptIfmtch slts msk key putVal expVal idx rpcntr -- TODO remove line duplication
-    else ptIfmtch slts msk key putVal expVal idx rpcntr  
+         else ptIfmtch kvs slts msk key putVal expVal idx rpcntr -- TODO remove line duplication
+    else ptIfmtch kvs slts msk key putVal expVal idx rpcntr  
 -- TODO when would cas fail
      --actually does the putting after tests and special cases have been handled
-     where ptIfmtch :: Slots key val -> Mask ->  Key key  -> Value val -> ValComp val ->
+     where ptIfmtch :: Kvs key val -> Slots key val -> Mask ->  Key key  -> Value val -> ValComp val ->
 	             SlotsIndex -> ReprobeCounter -> IO(Value val)
-           ptIfmtch slts msk key  newval compval idx reprobectr = do let slt = slts V.! idx
-					                                 rekcall = ptIfmtch slts msk key newval compval
+           ptIfmtch kvs slts msk key  newval compval idx reprobectr = do let slt = slts V.! idx 
+					                                     rekcall = ptIfmtch kvs slts msk key newval compval
 								-- TODO check if Slot is Kempty and compval==match any, then break and return T
-				                                     keyfits <- helper2 slt
-				                                     if keyfits 
-					                                  then
-					                                    do (success,ret) <- casValueSlot slt compval newval
-									       if success then --was there an change made 
-										  opSizeCntr ret newval else return ()--updating the sizecounter
-									       return ret
-                                                                          else rekcall (collision idx msk)
-											 (reprobectr +1)					
+								     -- TODO add more stuff for resize
+								         if reprobectr >= (reprobe_limit (V.length slts) ) then do
+									   newkvs <- getNextKvs kvs
+									   newslots <- return $ slots kvs
+									   newmask <- return $ mask kvs
+									   newidx <- return $ maskHash newmask $ fullHash key -- TODO hashing should be done only once, but this is not critical because the depth of the kvs list is going to be limited
+									   ptIfmtch newkvs newslots newmask key newval compval newidx 0
+								          else do 
+								     	   keyfits <- helper2 slt 
+									   if keyfits then do
+					                                          (success,ret) <- casValueSlot slt compval newval
+									          if success then --was there an change made 
+									 	   opSizeCntr ret newval else return ()--updating the sizecounter
+									          return ret
+                                                                            else rekcall (collision idx msk) (reprobectr+1)					
 				-- checks if the key in slt fits or puts the newkey there if thers an empts
 				-- responsible for updating the slotscounter
 				where helper2 :: Slot key val -> IO Bool
@@ -777,6 +784,9 @@ putIfMatch kvs key putVal expVal = do
 
 				      incSlotsCntr :: IO()
 				      incSlotsCntr = incSlotsCounter kvs
+
+-- PutIfMatch should be called in case reprobecounter is high enough in case a Key Tombstone, in case a newkvs already exists or in case a primed value is found
+
 
 -- TODO add reprobe count			
 -- counter functions
