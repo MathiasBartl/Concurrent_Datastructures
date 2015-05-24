@@ -53,13 +53,13 @@ tests_debugcode = TestList [ TestLabel "getNumberOfOngoingResizes" test_debugcod
 			   , TestLabel "getSlotsCounters"  test_debugcode_getSlotsCounters
 			   , TestLabel  "getReprobeCount" test_debugcode_getReprobeCount]
 
-{-tests_with_resize = TestList [ TestLabel "resize" test_resize
+tests_with_resize = TestList [ TestLabel "resize" test_resize 
 			     , TestLabel "multiple_resize" test_multiple_resize
 			     , TestLabel "lotsof_put" test_lotsof_put
 			--     , TestLabel ""
-			     , TestLabel "resize_finishes_lotsof_get_tosame" test_resize_finishes_lotsof_get_tosame]-}
+			     , TestLabel "resize_finishes_lotsof_get_tosame" test_resize_finishes_lotsof_get_tosame]
 --FIXME get the resize tests going with timelimit
-tests_with_resize = TestList []
+{-tests_with_resize = TestList []-}
 
 test1 = TestCase ( do ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTable Int Int) 
   		      ise <- HT.isEmpty ht
@@ -341,9 +341,9 @@ test_resize = TestCase (do ht <- emptySetup
 
 
 test_multiple_resize = TestCase (do ht <- emptySetup
-				    forM_ [0..35000] (\i -> HT.put ht i i)
+				    forM_ [0..3500] (\i -> HT.put ht i i)
 				    ret <- HT.size ht
-				    assertEqual "sizeCounter after resize" 30000001 ret
+				    assertEqual "sizeCounter after resize" 3501 ret
 				    ret <- HT.getSlotsCounters ht
 				    assertBool "ht has resized" ((last ret) > 8)
 				    assertBool "growns with every resize" (isStrictOrdered ret)
@@ -351,14 +351,14 @@ test_multiple_resize = TestCase (do ht <- emptySetup
 
 
 test_lotsof_put = TestCase ( do ht <- emptySetup
-				forM_ [0..30000000] (\i -> HT.put ht i i)
+				forM_ [0..3500] (\i -> HT.put ht i i)
 
 				ret <- HT.size ht
-				assertEqual "sizeCounter after resize" 30000001 ret
+				assertEqual "sizeCounter after resize" 3501 ret
 				
-				ret <- forM [0..30000000] (\i -> HT.get ht i)
+				ret <- forM [0..3000] (\i -> HT.get ht i)
 
-				assertEqual "No put left behind on resize" ((map Just) [0..30000000]) ret --TODO does this work
+				assertEqual "No put left behind on resize" ((map Just) [0..3501]) ret --TODO does this work
 				)
 
 

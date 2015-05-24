@@ -77,7 +77,7 @@ import Numeric (showIntAtBase) -- FIXME for debug only
 import Data.Char (intToDigit)       --dito
 
 import Test.QuickCheck.Arbitrary as QCA
-import Test.QuickCheck.Gen as QCG
+import Test.QuickCheck.Gen as QCG (Gen, sized)
 import Test.QuickCheck.Gen.Unsafe as QCGU
 
 import Data.Time.Clock (getCurrentTime, UTCTime, NominalDiffTime, DiffTime, secondsToDiffTime, diffUTCTime)
@@ -540,7 +540,7 @@ copySlot ht idx oldkvs newkvs = do let oldslot = kvsSlot oldkvs idx
 				   ky <- readKeySlot oldslot
 				   (finished,copied,oldvalueunprimed) <- primeOldValue oldslot
 				   if finished then return copied else do
-				   	oldnewkvsvalue <- putIfMatch newkvs ky oldvalueunprimed (Left T) -- put in unused slot
+				   	oldnewkvsvalue <- putIfMatch ht newkvs ky oldvalueunprimed (Left T) -- put in unused slot
 				   	copied <- return $ isUntoucedValue  oldnewkvsvalue  
 				   	slamValue oldslot
 				   	return copied
@@ -705,7 +705,7 @@ putIfMatch_T ::(Hashable key, Eq key, Eq value) =>
                ConcurrentHashTable key value -> key -> Value value -> ValComp value -> IO ( Value value)
 putIfMatch_T table key putVal expVal = do let ky = newKey key
                                           kv <- getHeadKvs table
-                                          putIfMatch kv ky putVal expVal                                   
+                                          putIfMatch table kv ky putVal expVal                                   
 
 
 -- TODO write during resize
@@ -716,8 +716,8 @@ putIfMatch_T table key putVal expVal = do let ky = newKey key
 -- TODO use only by acessor functions, not by resizing algorithm
 -- TODO assert key is not empty, putval is no empty, but possibly a tombstone, key value are not primed 
 putIfMatch :: forall key val. (Hashable key, Eq key, Eq val) =>
-              Kvs key val -> Key key -> Value val -> ValComp val -> IO (Value val)
-putIfMatch kvs key putVal expVal = do
+              ConcurrentHashTable key val -> Kvs key val -> Key key -> Value val -> ValComp val -> IO (Value val)
+putIfMatch ht kvs key putVal expVal = do
   let msk = mask kvs :: Mask
       slts = slots kvs
       fllhash = fullHash key  :: FullHash 
@@ -727,29 +727,32 @@ putIfMatch kvs key putVal expVal = do
   return $ assert $ not $ isKEmpty key -- TODO this is not in the original
   return $ assert $ not $ isPrimedValue putVal
   return $ assert $ not $ isPrimedValComp expVal
-  (slot, rpcntr)  <- (getSlot slts msk key) ::IO(Slot key val, ReprobeCounter) --TODO, either remove this or have it give back a reprobe counter
+  --(slot, rpcntr)  <- (getSlot slts msk key) ::IO(Slot key val, ReprobeCounter) --TODO, either remove this or have it give back a reprobe counter
   
-  oldKey <-  readKeySlot slot
-  if isKEmpty oldKey --if putvall TMBSTONE and oldkey == empty do nothing -- TODO put this lines into an subfunction
-    then if ((isTombstone putVal) || expVal == Right MATCH_ANY || if isLeft expVal then not $ isTombstone $ fromLeft expVal else False)
+  --oldKey <-  readKeySlot slot
+  --if isKEmpty oldKey --if putvall TMBSTONE and oldkey == empty do nothing -- TODO put this lines into an subfunction
+    --then if ((isTombstone putVal) || expVal == Right MATCH_ANY || if isLeft expVal then not $ isTombstone $ fromLeft expVal else False)
  -- if oldkey empty and MATCH_ANY do nothing
-         then return T {-TODO break writing value unnecessary -} 
-         else ptIfmtch kvs slts msk key putVal expVal idx rpcntr -- TODO remove line duplication
-    else ptIfmtch kvs slts msk key putVal expVal idx rpcntr  
+      --   then return T {-TODO break writing value unnecessary -} 
+        -- else ptIfmtch ht kvs slts msk key putVal expVal idx rpcntr -- TODO remove line duplication
+    --else ptIfmtch ht kvs slts msk key putVal expVal idx rpcntr 
+  ptIfmtch ht kvs slts msk key putVal expVal idx 0 
 -- TODO when would cas fail
      --actually does the putting after tests and special cases have been handled
-     where ptIfmtch :: Kvs key val -> Slots key val -> Mask ->  Key key  -> Value val -> ValComp val ->
+     where ptIfmtch :: ConcurrentHashTable key val -> Kvs key val -> Slots key val -> Mask ->  Key key  -> Value val -> ValComp val ->
 	             SlotsIndex -> ReprobeCounter -> IO(Value val)
-           ptIfmtch kvs slts msk key  newval compval idx reprobectr = do let slt = slts V.! idx 
-					                                     rekcall = ptIfmtch kvs slts msk key newval compval
+           ptIfmtch ht kvs slts msk key  newval compval idx reprobectr
+								    = do let slt = slts V.! idx 
+					                                     rekcall = ptIfmtch ht kvs slts msk key newval compval
 								-- TODO check if Slot is Kempty and compval==match any, then break and return T
 								     -- TODO add more stuff for resize
-								         if reprobectr >= (reprobe_limit (V.length slts) ) then do
-									   newkvs <- getNextKvs kvs
+									 new <- tableFull reprobectr (V.length slts) (slotsCounter kvs)
+								         if new then do -- FIXME compare to original code, is test for slotscounter realy necessary
+									   newkvs <- resize ht kvs -- TODO test for KT and do help copy
 									   newslots <- return $ slots kvs
 									   newmask <- return $ mask kvs
 									   newidx <- return $ maskHash newmask $ fullHash key -- TODO hashing should be done only once, but this is not critical because the depth of the kvs list is going to be limited
-									   ptIfmtch newkvs newslots newmask key newval compval newidx 0
+									   ptIfmtch ht newkvs newslots newmask key newval compval newidx 0
 								          else do 
 								     	   keyfits <- helper2 slt 
 									   if keyfits then do
