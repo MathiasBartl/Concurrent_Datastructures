@@ -128,7 +128,7 @@ data Key k = Kempty
 		 , keyE :: !k
 		 } 
 
--- T : empty, tombstone, Tp : tombstone primed, V : value, Vp : value primed -- TODO need tobstoes to be primed
+-- T : empty, tombstone, Tp : tombstone primed, V : value, Vp : value primed -- TODO need tombstones to be primed
 data Value value =  T | Tp | V value | Vp value | S deriving (Eq) -- TODO what kind of comparision is used
 
 
@@ -158,7 +158,7 @@ type SlotsCounter = AtomicCounter
 type SizeCounter  = AtomicCounter
 
 type FullHash = SlotsIndex
-type CopyDone = SlotsIndex -- originaly an atomic-long-field updater
+type CopyDone = SlotsIndex -- originally an atomic-long-field updater
 type CopyIndex = SlotsIndex
 type FullHashUnsigned = Word
 type SlotsIndex = Int
@@ -283,7 +283,7 @@ isValue _ = False
 -- does not terminate if array is full, and key is not in it
 -- TODO possibly return whether the slot has a key or the key is empty
 -- TODO testcases for reprobe
--- FIXME does not terminate if reprobes infinitly or very often, best would be to return an Maybe
+-- FIXME does not terminate if reprobes infinitely or very often, best would be to return an Maybe
 -- | Reprobes until it find an Slot with a fitting or empty key
 getSlot :: forall key value . (Eq key) =>  
            Slots key value -> Mask -> Key key -> IO(Slot key value, ReprobeCounter)
@@ -292,7 +292,7 @@ getSlot slots mask key =  do let fllhash = fullHash key
 			     getSlt slots newReprobeCounter key idx mask
 		where full :: Key key -> Key key -> Bool
 		      full  Kempty _ = False
-		      full  k1 k2 = not (keyComp k1 k2) --Collison threatment is done again whe CASing key
+		      full  k1 k2 = not (keyComp k1 k2) --Collision treatment is done again whe CASing key
 		      getSlt:: Slots key value -> ReprobeCounter -> Key key -> SlotsIndex -> Mask -> IO(Slot key value, ReprobeCounter)
 		      getSlt slots rpcntr newkey idx mask =
                         do let slot = (slots V.! idx) :: (Slot key value)
@@ -306,7 +306,7 @@ getSlot slots mask key =  do let fllhash = fullHash key
 -- FIXME REMOVE
                            if full oldkey newkey 
                                        then getSlt slots (incReprobeCounter rpcntr) newkey (collision idx mask) mask -- Reprobe
-                                       else return (slot,rpcntr) -- Found a Slot that has eiter an fitting or an empty key
+                                       else return (slot,rpcntr) -- Found a Slot that has either an fitting or an empty key
                            
 
 collision :: SlotsIndex -> Mask -> SlotsIndex
@@ -328,7 +328,7 @@ spreadHash input = runST $ do h <- return $ input + ( (shiftL input 15) `xor` 0x
 			      return $ h `xor` (unsignedShiftR h 16)
 	where unsignedShiftR :: Int -> Int -> Int
 	      unsignedShiftR input len= fromIntegral (shiftR ((fromIntegral input)::FullHashUnsigned) len) 
-
+-- TODO write a testcase for this hash
 
 
 
@@ -347,7 +347,7 @@ isKEmptySlot slot = do slotkey <- readKeySlot slot
 
 
 -- see 'get'
--- reading during resize is already imlemented
+-- reading during resize is already implemented
 get_impl :: (Eq key, Hashable key) => 
             ConcurrentHashTable key val -> Kvs key val -> Key key  -> IO(Value val)
 get_impl table kvs key          = do let msk = mask kvs
@@ -428,7 +428,7 @@ casValueSlot slt@(Slot _ va) cmpvaluecomp newvalue = do
 -- TODO lets think about how to threat primed values
 
 -- TODO one could save oneself one readForCas by reusing retticket, that why the thing returns a ticket.
---by havin casValueSlot as an wraper for an rekursive functionusing tickets
+--by having casValueSlot as an wrapper for an recursive function using tickets
 
 
 
@@ -477,7 +477,7 @@ resizeInProgress ht = do topkvs <- getHeadKvs ht
 copyOnePair :: Slot key value -> Kvs key value -> IO () 
 copyOnePair slt newkvs = do undefined -- TODO read Slot 
                                       -- TODO should there be any assert special case
-                                      -- threatment, or should these be in a wraper
+                                      -- treatment, or should these be in a wrapper
 			    (oldkey, oldvalue) <- readSlot slt -- TODO no Key here -> nothing to copy
 			    -- TODO Tombstone no need to copy, but best to cas a sentinel
 			    (casNewSuccess, newSlot) <- putAndReturnSlot oldkey oldvalue newkvs  -- the slot on the newkvs where the primed value has been put)
@@ -493,7 +493,7 @@ copyOnePair slt newkvs = do undefined -- TODO read Slot
 
 -- | removes the oldest kvs from the ht
 --throws error, if there is no resize in progress and thus only one kvs
---some other routine has to determine that the oldest kvs is completly copied, and that the routine is not called multiple times for the same kvs
+--some other routine has to determine that the oldest kvs is completely copied, and that the routine is not called multiple times for the same kvs
 -- maybe there has to be an cas used -- TODO probably better us CAS with 'casHeadKvs'
 removeOldestKvs :: ConcurrentHashTable key val -> IO ()
 removeOldestKvs ht = do let htKvsRef = kvs ht
@@ -503,7 +503,7 @@ removeOldestKvs ht = do let htKvsRef = kvs ht
 			--oldestKvs will be GCted, one could explicitly destroy oldestKvs here
 
 copySlotAndCheck :: ConcurrentHashTable key value -> Kvs key value -> SlotsIndex -> Bool -> IO () --(Kvs key value) -- TODO make type signature
-copySlotAndCheck  ht oldkvs idx shouldHelp = do newkvs <- getNextKvs oldkvs -- TODO originally theres a volatile read
+copySlotAndCheck  ht oldkvs idx shouldHelp = do newkvs <- getNextKvs oldkvs -- TODO originally there's a volatile read
 						success <- undefined -- TODO Copy Slot
 						if success then copyCheckAndPromote ht oldkvs 1 else return ()
 						if not shouldHelp then return () else  -- TODO possible return newkvs here
@@ -512,7 +512,7 @@ copySlotAndCheck  ht oldkvs idx shouldHelp = do newkvs <- getNextKvs oldkvs -- T
 
 -- | Increases the copy done counter for oldkvs by workdone, and removes oldkvs if it is the oldest kvs and has been fully copied
 copyCheckAndPromote :: ConcurrentHashTable key value -> Kvs key value -> SlotsIndex -> IO ()
-copyCheckAndPromote ht oldkvs workdone  = do let oldlen = getLength oldkvs   -- I do think I should get the ticket befor this function is called so we can check simply if the thing that we idetified as headkvs is still the headkvs, or something
+copyCheckAndPromote ht oldkvs workdone  = do let oldlen = getLength oldkvs   -- I do think I should get the ticket before this function is called so we can check simply if the thing that we identified as headkvs is still the headkvs, or something.
 					     copydone <- if workdone > 0 then casCopyDone oldkvs workdone else getCopyDone oldkvs
 					     isheadkvs  <- isHeadKvs ht oldkvs-- TODO
 					     if copydone < oldlen then return () else if not $ isheadkvs  then return () else
@@ -522,7 +522,7 @@ copyCheckAndPromote ht oldkvs workdone  = do let oldlen = getLength oldkvs   -- 
 -- TODO assert workdone is posetive
 -- TODO 1. if workdone > 0 casCopyDone.
 --      2. test if new value of copyDon == oldlen
---      3. if table has been fully copyied
+--      3. if table has been fully copied
 --          if oldkvs == topKvs then casKVS with newKvs
               --set last resize milli
 -- TODO, how to determine if kvs is topkvs 
@@ -531,7 +531,7 @@ copyCheckAndPromote ht oldkvs workdone  = do let oldlen = getLength oldkvs   -- 
 
 -- TODO only use in copyCheckAndPromote
 casCopyDone :: Kvs key value -> SlotsIndex -> IO SlotsIndex
-casCopyDone kv workdone = do copydoneref <- (return $ getCopyDoneRef kv)::(IO(IORef CopyDone)) -- TODO get copydone object  -- Note copy done is originaly an
+casCopyDone kv workdone = do copydoneref <- (return $ getCopyDoneRef kv)::(IO(IORef CopyDone)) -- TODO get copydone object  -- Note copy done is originally an
 --atomicLongFieldUpdater -- TODO have copydone its own type
 		 	     copydoneticket <- readForCAS copydoneref
 			     casCD copydoneref copydoneticket workdone
@@ -556,7 +556,7 @@ resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
 	       heuristicNewSize len szcntr oldtime newtime sltcntr = do sz <- readCounter szcntr
 									slts <- readCounter sltcntr
 									newsze <- return sz
-									-- TODO assert len is posetive
+									-- TODO assert len is positive
 									newsze <- return $ if sz >= (shiftR len 2) then
 									   if sz >= (shiftR len 1) then  shiftL len 2 else shiftL len 1  else newsze
 									newsze <- return $ if (newsze <= len) 
@@ -565,12 +565,12 @@ resize ht oldkvs= do hasnextkvs <- hasNextKvs oldkvs
 									  then shiftL len 1 else newsze
 									newsze <- return $ if newsze < len then len else newsze
 									return $ normSize newsze-- TODO assert table is not shrinking
--- TODO more functional coding, or at least seperate ST, IO, handle time better
+-- TODO more functional coding, or at least separate ST, IO, handle time better
 
 -- TODO add resize to putIfMatch
 
 -- TODO add tableFull to putIfMatch
--- TODO Note, for performance sake an implementation of SlotsCounter that is only aproximatly accurate would fully suffice 
+-- TODO Note, for performance sake an implementation of SlotsCounter that is only approximately accurate would fully suffice
 -- | Heuristic to determine whether the kvs is so full, that an resize is recommended
 tableFull :: ReprobeCounter  -- ^ just to check if a resize s in order because of to many reprobes anyway
 	     -> Size         -- ^ the number of slots in the kvs 
@@ -595,7 +595,7 @@ putIfMatch_T table key putVal expVal = do let ky = newKey key
 -- TODO refactor for readability/structure
 -- TODO add reprobe counter
 -- TODO, do we need to pass the Hashtable as parameter?
--- TODO use only by acessor functions, not by resizing algorithm
+-- TODO use only by accessor functions, not by resizing algorithm
 -- TODO assert key is not empty, putval is no empty, but possibly a tombstone, key value are not primed 
 putIfMatch :: forall key val. (Hashable key, Eq key, Eq val) =>
               Kvs key val -> Key key -> Value val -> ValComp val -> IO (Value val)
@@ -603,7 +603,7 @@ putIfMatch kvs key putVal expVal = do
   let msk = mask kvs :: Mask
       slts = slots kvs
       fllhash = fullHash key  :: FullHash 
-      idx = maskHash msk fllhash ::SlotsIndex --parameterise maskHash with kvs and key
+      idx = maskHash msk fllhash ::SlotsIndex --parameterize maskHash with kvs and key
  
   -- TODO get highest kvs and test if a resize is running and then get the second highest kvs
   return $ assert $ not $ isKEmpty key -- TODO this is not in the original
@@ -612,7 +612,7 @@ putIfMatch kvs key putVal expVal = do
   (slot, rpcntr)  <- (getSlot slts msk key) ::IO(Slot key val, ReprobeCounter) --TODO, either remove this or have it give back a reprobe counter
   
   oldKey <-  readKeySlot slot
-  if isKEmpty oldKey --if putvall TMBSTONE and oldkey == empty do nothing -- TODO put this lines into an subfunction
+  if isKEmpty oldKey --if putvall TMBSTONE and oldkey == empty do nothing -- TODO put this lines into an sub function
     then if ((isTombstone putVal) || expVal == Right MATCH_ANY || if isLeft expVal then not $ isTombstone $ fromLeft expVal else False)
  -- if oldkey empty and MATCH_ANY do nothing
          then return T {-TODO break writing value unnecessary -} 
@@ -634,12 +634,12 @@ putIfMatch kvs key putVal expVal = do
 									       return ret
                                                                           else rekcall (collision idx msk)
 											 (reprobectr +1)					
-				-- checks if the key in slt fits or puts the newkey there if thers an empts
+				-- checks if the key in slt fits or puts the newkey there if ther's an empty
 				-- responsible for updating the slotscounter
 				where helper2 :: Slot key val -> IO Bool
 				      helper2 slt = do (success, cased) <- casKeySlot slt key
 						       if cased then incSlotsCntr else return () 
--- TODO doing a simple check before the expensive cas should not be harmfull, because of the monotonic nature of keys
+-- TODO doing a simple check before the expensive cas should not be harmful, because of the monotonic nature of keys
 						       return success 		 
 				      -- TODO if T to Value inc size counter, if V to T or S dec size counter
 				      opSizeCntr :: Value val -> Value val -> IO()
@@ -707,7 +707,7 @@ getHeadKvs table = do let kvsref= kvs table
 
 isHeadKvs :: ConcurrentHashTable key val -> Kvs key val -> IO Bool
 isHeadKvs ht kv = do let headref = kvs ht  -- TODO Does this have to be in IO, ok
- 		     return undefined -- TODO ok, I wanted to make an pointer coparision, this would if it was a good idea require me to pass an IOref as parameter, witch would screw up the interface
+ 		     return undefined -- TODO ok, I wanted to make an pointer comparision, this would if it was a good idea require me to pass an IOref as parameter, witch would screw up the interface
 --gets then new resizedtable, throws error if does not exist
 getNextKvs :: Kvs key val -> IO(Kvs key val)
 getNextKvs kv = do let kvsref =  newkvs kv  --throws error
@@ -731,8 +731,8 @@ casNextKvs kvs nwkvs = do let kvsref = newkvs kvs
 			  oldticket <- readForCAS kvsref
 			  if isJust $ peekTicket oldticket then return False else do (success, _) <- casIORef kvsref oldticket (Just nwkvs)
 			   						             return $ success
- -- TODO rewrite the other cas stuff accordigly
--- TODO (Just IORef a) is a stupid construction because seting the IORef from Nothing to Just changes an immutable datastructure also you cant do an cas on the Maybe type, todo have some value of IORef that says nothing
+ -- TODO rewrite the other cas stuff accordingly
+-- TODO (Just IORef a) is a stupid construction because setting the IORef from Nothing to Just changes an immutable data structure also you cant do an cas on the Maybe type, todo have some value of IORef that says nothing
 -- TODO is this correctly
 
 -- TODO use tickets correctly here
@@ -769,8 +769,8 @@ containsKey table key = do
 
 -- | Tests if the value is in the table.
 --
---  __Attention:__ Unlike access by keys this is /computationaly very expensive,/ since it requires an traversal of the entire table.
---  If you do this a lot, you need a different datastructure. 
+--  __Attention:__ Unlike access by keys this is /computationally very expensive,/ since it requires an traversal of the entire table.
+--  If you do this a lot, you need a different data structure.
 containsValue :: (Eq val) => ConcurrentHashTable key val -> val -> IO(Bool)
 containsValue table val = do let kvsref = kvs table
 			     kv <- readIORef kvsref
@@ -796,15 +796,15 @@ containsVal kvs val = do let slts = slots kvs
 				where g :: Bool -> a -> (m Bool)
               			      g akk content = do testresult <- test content
 				                         return $ testresult || akk
--- TODO adopt to resizing, (by recursivly calling for newkvs) anyway what about primed, I should read that up
--- TODO for this the linearisation point for inputing would be the cas on value even if the cas on key has not be done yet, actually its better to think about this for a while, maybe not export this function for a while
+-- TODO adopt to resizing, (by recursively calling for newkvs) anyway what about primed, I should read that up
+-- TODO for this the linearization point for inputing would be the cas on value even if the cas on key has not be done yet, actually its better to think about this for a while, maybe not export this function for a while
 -- TODO no reason anyM should not be inlined
 
--- | puts the key-value mapping in the table, thus overwriting any pervious mapping of the key to an value
+-- | puts the key-value mapping in the table, thus overwriting any previous mapping of the key to an value
 put :: (Eq val,Eq key, Hashable key) => 
        ConcurrentHashTable key val -> key 
        -> val 
-       -> IO( Maybe val) -- ^ Just oldvalue if the key was mapped to an value perviously, Nothing if the key was not mapped to any value
+       -> IO( Maybe val) -- ^ Just oldvalue if the key was mapped to an value previously, Nothing if the key was not mapped to any value
 put table key val = do old <- putIfMatch_T table key (V val) (Right NO_MATCH_OLD)
                        return $ unwrapValue old
 -- | puts the value if there is no value matched to the key
@@ -812,9 +812,9 @@ putIfAbsent :: (Eq val,Eq key, Hashable key) =>
                ConcurrentHashTable key val 
 	       -> key 
 	       -> val 
-	       -> IO( Maybe val) -- ^ 'Just' oldvalue if there was an mappig from key (/thus the put WAS NOT done/), 'Nothing' if there wasn't an
+	       -> IO( Maybe val) -- ^ 'Just' oldvalue if there was an mapping from key (/thus the put WAS NOT done/), 'Nothing' if there wasn't an
 				 -- mapping (/thus the put WAS done/)
-putIfAbsent table key val = do old <- putIfMatch_T table key (V val) (Left T) -- TODO is tombstone correct, what if there is a primed vaue 
+putIfAbsent table key val = do old <- putIfMatch_T table key (V val) (Left T) -- TODO is tombstone correct, what if there is a primed value
 			       return $ unwrapValue old
 
 -- | Removes the key (and its corresponding value) from this map.
@@ -1107,11 +1107,11 @@ htGen htsize keysize (Right valuegen) = do gen <- h2
 
 -- TODO parametrise this with custom keygen
 
--- TODO write a debug function telling the ht to arbitaritly resize
+-- TODO write a debug function telling the ht to arbitrarily resize
 
---todo generate arbitrary hashtables
+--todo generate arbitrary hash tables
 
---write an assertio for resize
+--write an assertion for resize
 
 -- TODO Assert each kvs does not contain the same key twice
 
