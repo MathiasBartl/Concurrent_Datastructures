@@ -80,7 +80,7 @@ test1 = TestCase ( do ht <- (HT.newConcurrentHashTable)::IO(HT.ConcurrentHashTab
 	)
 
 
---TODO some setup with put, and then seperate testcases for every function
+--TODO some setup with put, and then separate testcases for every function
 
 test_put = TestCase (do ht <- setup
                         --htstr <-  HT.debugShow ht --FIXME temporary
@@ -275,7 +275,7 @@ test_unnecessary_key_writes = TestCase (do ht <- setup
 					   assertEqual "SlotsCounter after 3 Inserts" 3 (head ret)
 	
 					   HT.removeKey ht 10
-					   ret <- HT.getSlotsCounters ht  --TODO factor this out into an seperate Testcase
+					   ret <- HT.getSlotsCounters ht  --TODO factor this out into an separate Testcase
 					   assertEqual "removal does not reduce the number of Slots in use" 3 (head ret)
 
 				       	   HT.removeKey ht 20
@@ -285,7 +285,7 @@ test_unnecessary_key_writes = TestCase (do ht <- setup
 					   HT.remove ht 21 21
 					   ret <- HT.getSlotsCounters ht
 					   assertEqual "Using up the slot should be unnecessary" 3 (head ret)
-					   --TODO test al other functions, witch may find an Tombstone and leave it there
+					   --TODO test all other functions, witch may find an Tombstone and leave it there
 
 					   HT.replace ht 22 22
 					   ret <- HT.getSlotsCounters ht
@@ -313,11 +313,11 @@ test_debugcode_getSlotsCounters = TestCase (do ht <- setup
 					       ret <- HT.getSlotsCounters ht
 					       assertEqual "SlotsCounter after 3 Inserts" 3 (head ret)	
 					       HT.removeKey ht 10 
-					       ret <- HT.getSlotsCounters ht  --TODO factor this out into an seperate Testcase
+					       ret <- HT.getSlotsCounters ht  --TODO factor this out into an separate Testcase
 					       assertEqual "removal does not reduce the number of Slots in use" 3 (head ret)
 				       	       assertSlotsCountersMatchUsedSlots ht
 
-					       --TODO compare slotscouter to actuall numberof used slots, possibly by writing an assertion into putIfMatch under the condition that all access is sequential
+					       --TODO compare slotscoutner to actual number of used slots, possibly by writing an assertion into putIfMatch under the condition that all access is sequential
 					       )
 
 test_debugcode_getReprobeCount = TestCase (do ht <- emptySetup
@@ -325,7 +325,7 @@ test_debugcode_getReprobeCount = TestCase (do ht <- emptySetup
 					      assertEqual "No reprobes on an empty table." 0 ret
 					      )
 --todo test a case where there has to be a case of reprobes, possibly export the fullhash vlues fo this purpose, --this is not that urgent
---this actually is a testcse for reprobecounter likewise
+--this actually is a testcase for reprobecounter likewise
 
 
 test_resize = TestCase (do ht <- emptySetup
@@ -377,7 +377,7 @@ test_resize_finishes_lotsof_get_tosame = TestCase (do ht <- emptySetup
 						      )
 
 --TODO testcase for sizecouter
---TODO testcased for other fuctions when apropriate
+--TODO testcase for other functions where appropriate
 
 --TODO write assertion that resizing grows, or does it
 

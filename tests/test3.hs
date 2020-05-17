@@ -46,8 +46,8 @@ distribution = [(1,return Put),(3,return Get)]
 
 newtype HTActionParam = HTActionParam Int deriving (Eq, Show)
 
---  instead of declaring newtyps and writing standart generators,
--- leafing them as default types and use forall with custom genrators would also be possible
+--  instead of declaring newtyps and writing standard generators,
+-- leaving them as default types and use forall with custom generators would also be possible
 
 instance Hashable HTActionParam where
 	hashWithSalt s (HTActionParam i) = hashWithSalt s i
@@ -59,15 +59,15 @@ newtype ThreadParam = ThreadParam [HTAction] deriving Show
 
 newtype ThreadParams = ThreadParams [ThreadParam] deriving Show
 
-fits :: Eq keyval => Maybe keyval -> keyval -> Bool --TODO differet returntype
+fits :: Eq keyval => Maybe keyval -> keyval -> Bool --TODO different returntype
 fits Nothing _ = True
 fits (Just kv1) kv2 = kv1 == kv2
 
 h1:: HT.ConcurrentHashTable HTActionParam HTActionParam -> HTAction -> IO ()--TODO throw something
 h1 ht (HTAction (kv, Put)) = do ret <- HT.put ht kv kv
-		     		if fits ret kv then return () else undefined --TODO undefied is not pass
+		     		if fits ret kv then return () else undefined --TODO undefined is not pass
 ht ht (HTAction (kv, Get)) = do ret <- HT.get ht kv 
-		     		if fits ret kv then return () else undefined --TODO undefied is not pass
+		     		if fits ret kv then return () else undefined --TODO undefined is not pass
 
 test1 :: HT.ConcurrentHashTable HTActionParam HTActionParam -> ThreadParam -> IO ()
 test1 ht (ThreadParam caseList) =  forM_ caseList (h1 ht) 
@@ -141,10 +141,10 @@ lotsof_put :: ( HT.ConcurrentHashTable Int Int ) -> [Int] -> IO [Maybe Int]
 lotsof_put ht inp = do forM_ inp (\int -> HT.put ht int int)
 		       forM inp (\int -> HT.get ht int)
 
---TODO test withou resize, no puts are forgotten
+--TODO test without resize, no puts are forgotten
 
 --tests = TestList [ TestLabel "lotsof_put" test_lotsof_put]
-tests = TestList []  --FIXME get the resize relatet tests going with a time limit
+tests = TestList []  --FIXME get the resize related tests going with a time limit
 
 --TODO main method
 main :: IO ()
